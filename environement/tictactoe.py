@@ -19,7 +19,7 @@ class TicTacToe:
         return [i for i in range(9) if self.board.flatten()[i] == 0]
 
     def step(self, action):
-        available_actions = self.available_actions()  # Récupérer les actions disponibles
+        available_actions = self.available_actions()
 
         if action not in available_actions:
             print(f"Invalid action: {action}, available actions: {available_actions}")

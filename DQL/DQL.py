@@ -5,7 +5,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 import tensorflow as tf
 
-# Hyperparamètres
 learning_rate = 0.001
 gamma = 0.95
 epsilon = 1.0
@@ -14,7 +13,6 @@ epsilon_decay = 0.995
 batch_size = 64
 memory = deque(maxlen=2000)
 
-# Construction du modèle de DQN
 def build_model(state_size, action_size):
     model = Sequential()
     model.add(Dense(64, input_dim=state_size, activation='relu'))
