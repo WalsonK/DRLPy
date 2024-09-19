@@ -6,7 +6,7 @@ class TicTacToe:
         self.board = np.zeros((3, 3), dtype=int)
         self.done = False
         self.winner = None
-        self.current_player = 1
+        self.current_player = 1  # Player 1 is 1 (X), Player 2 is -1 (O)
 
     def reset(self):
         self.board = np.zeros((3, 3), dtype=int)
@@ -19,29 +19,24 @@ class TicTacToe:
         return [i for i in range(9) if self.board.flatten()[i] == 0]
 
     def step(self, action):
-        available_actions = self.available_actions()
+        if self.board.flatten()[action] == 0:
+            row, col = divmod(action, 3)
+            self.board[row, col] = self.current_player
 
-        if action not in available_actions:
-            print(f"Invalid action: {action}, available actions: {available_actions}")
-            raise ValueError("Invalid action selected")
-
-        # Si l'action est valide, on continue le jeu
-        row, col = divmod(action, 3)
-        self.board[row, col] = self.current_player
-
-        if self.check_winner():
-            self.done = True
-            self.winner = self.current_player
-            reward = 1 if self.current_player == 1 else -1
-        elif len(self.available_actions()) == 0:
-            self.done = True
-            self.winner = 0  # Match nul
-            reward = 0
+            if self.check_winner():
+                self.done = True
+                self.winner = self.current_player
+                reward = 1 if self.current_player == 1 else -1
+            elif len(self.available_actions()) == 0:
+                self.done = True
+                self.winner = 0  # Tie
+                reward = 0
+            else:
+                self.current_player *= -1
+                reward = 0
+            return self.board.flatten(), reward, self.done
         else:
-            self.current_player *= -1
-            reward = 0
-
-        return self.board.flatten(), reward, self.done
+            raise ValueError("Invalid action")
 
     def check_winner(self):
         for i in range(3):
@@ -53,5 +48,8 @@ class TicTacToe:
         return False
 
     def render(self):
-        print(self.board)
-
+        # Traduire le plateau avec des X et O au lieu de 1 et -1
+        board_symbols = np.where(self.board == 1, 'X', np.where(self.board == -1, 'O', ' '))
+        print("\nBoard:")
+        print("\n".join([" | ".join(row) for row in board_symbols]))
+        print()  # Espacement pour plus de clarté
