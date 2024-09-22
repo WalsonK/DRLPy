@@ -1,6 +1,7 @@
 import numpy as np
 import random
 
+
 class TicTacToe:
     def __init__(self):
         self.board = np.zeros((3, 3), dtype=int)
@@ -42,14 +43,17 @@ class TicTacToe:
         for i in range(3):
             if abs(sum(self.board[i, :])) == 3 or abs(sum(self.board[:, i])) == 3:
                 return True
-        if abs(sum([self.board[i, i] for i in range(3)])) == 3 or abs(
-                sum([self.board[i, 2 - i] for i in range(3)])) == 3:
+        if (
+            abs(sum([self.board[i, i] for i in range(3)])) == 3
+            or abs(sum([self.board[i, 2 - i] for i in range(3)])) == 3
+        ):
             return True
         return False
 
     def render(self):
-        # Traduire le plateau avec des X et O au lieu de 1 et -1
-        board_symbols = np.where(self.board == 1, 'X', np.where(self.board == -1, 'O', ' '))
+        board_symbols = np.where(
+            self.board == 1, "X", np.where(self.board == -1, "O", " ")
+        )
         print("\nBoard:")
         print("\n".join([" | ".join(row) for row in board_symbols]))
-        print()  # Espacement pour plus de clarté
+        print()
