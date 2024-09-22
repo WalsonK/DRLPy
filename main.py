@@ -1,8 +1,9 @@
-from environement.tictactoe import TicTacToe
+import random
+
+from DQL.DQL import build_model, choose_action, remember, replay, update_epsilon
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
-from DQL.DQL import build_model, remember, replay, choose_action, update_epsilon
-import random
+from environement.tictactoe import TicTacToe
 
 
 # Game selection logic

@@ -1,9 +1,10 @@
-import numpy as np
 import random
 from collections import deque
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+
+import numpy as np
 import tensorflow as tf
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential
 
 learning_rate = 0.001
 gamma = 0.95
