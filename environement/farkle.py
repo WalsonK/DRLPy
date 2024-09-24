@@ -114,9 +114,9 @@ class Farkle:
 
         # Print triplets
         if len(triplets) > 0:
-            self.current_bank = triplets.copy()
+            self.current_bank += triplets.copy()
             print(f"Player {self.current_player} Bank:")
-            self.print_dice(triplets)
+            self.print_dice(self.current_bank)
 
             # new dice list
             print(f"new dice list:")
@@ -184,6 +184,7 @@ class Farkle:
 
         if action == 'b':
             if self.remaining_dice == 1:
+                self.current_bank.append(self.dice_list[0])
                 # Calc score
                 self.calculate_score()
                 print(f"Player {self.current_player} Bank: {self.current_bank}")
