@@ -1,4 +1,5 @@
 import random
+import time
 
 
 def convert_input_list(array):
@@ -69,7 +70,6 @@ class Farkle:
         self.remaining_dice = 6
         self.done = False
         self.winner = None
-        return self.get_state()
 
     def available_actions(self):
         # Ici on peut inclure la logique pour déterminer les actions possibles
@@ -154,12 +154,18 @@ class Farkle:
                 else:
                     self.current_turn_score += die * 10
 
-        print(f"Current Score: {self.current_turn_score}")
         self.scores[self.current_player] += self.current_turn_score
         print(f"Score of player {self.current_player}: {self.scores[self.current_player]}")
         self.current_turn_score = 0
 
-    def step(self, action):
+    def switch_player(self):
+        self.current_player = 1 if self.current_player == 0 else 0
+        self.remaining_dice = 6
+        self.current_bank = []
+        self.current_turn_score = 0
+        print(f"Game Score : {env.scores} ")
+
+    def step(self, action, banked=None):
         if action == 'r':
             if self.remaining_dice == 1:
                 self.roll_dice()
@@ -170,17 +176,20 @@ class Farkle:
                     self.calculate_score()
                     print(f"Player {self.current_player} Bank: {self.current_bank}")
                     print("Turn over")
-                    self.current_player = 1
+                    self.switch_player()
                 else:
                     self.current_bank.append(self.dice_list[0])
                     # calc score
                     self.calculate_score()
                     print(f"Player {self.current_player} Bank: {self.current_bank}")
                     print("Turn over")
-                    self.current_player = 1
+                    self.switch_player()
             else:
                 self.roll_dice()
                 self.get_triplets()
+                if len(self.dice_list) == 0:
+                    self.calculate_score()
+                    self.switch_player()
 
         if action == 'b':
             if self.remaining_dice == 1:
@@ -189,27 +198,83 @@ class Farkle:
                 self.calculate_score()
                 print(f"Player {self.current_player} Bank: {self.current_bank}")
                 print("Turn over")
-                self.current_player = 1
+                self.switch_player()
             else:
-                d_to_bank = input("Write index of dice, separate by 1 space\n>")
-                d_to_bank = list(d_to_bank)
-                d_to_bank = convert_input_list(d_to_bank)
-                self.bank_dice(d_to_bank)
+                if banked is None:
+                    d_to_bank = input("Write index of dice, separate by 1 space\n>")
+                    d_to_bank = list(d_to_bank)
+                    d_to_bank = convert_input_list(d_to_bank)
+                    self.bank_dice(d_to_bank)
+                else:
+                    self.bank_dice(banked)
+
                 print(f"Player {self.current_player} Bank:")
                 self.print_dice(self.current_bank)
-                print(f"new dice list:")
-                self.print_dice(self.dice_list)
+                if len(self.dice_list) > 0:
+                    print(f"new dice list:")
+                    self.print_dice(self.dice_list)
+                else:
+                    self.calculate_score()
+                    self.switch_player()
+
+    def bot_turn(self, botPlayer=1):
+        print(f"Player {self.current_player} turn:")
+        self.roll_dice()
+        self.get_triplets()
+        if len(self.dice_list) > 0:
+            while self.current_player == botPlayer:
+                action_rand = random.randint(0, 1)
+                if action_rand == 0:
+                    print(f"Action of Player {self.current_player} : Roll")
+                    self.step('r')
+                if action_rand == 1:
+                    rand_bank = [random.randint(1, len(self.dice_list))]
+                    print(f"Action of Player {self.current_player} : Bank dice-{rand_bank}")
+                    self.step('b', banked=rand_bank)
+        else:
+            self.calculate_score()
+            self.switch_player()
+
+    def play_game(self, isBotGame=False):
+        def solo_round(isb):
+            if self.current_player == 0:
+                if not isBotGame:
+                    choice = input("Would you like to roll or bank? (r/b)\n>")
+                    self.step(choice)
+                    if self.remaining_dice == 0:
+                        self.calculate_score()
+                else:
+                    self.bot_turn(botPlayer=0)
+            else:
+                self.bot_turn()
+
+        print(f"Game Score : {env.scores} ")
+        while all(s <= 1000 for s in self.scores):
+            solo_round(isBotGame)
+        if any(s <= 1000 for s in self.scores):
+            solo_round(isBotGame)
+        self.reset()
+
 
 
 env = Farkle()
-print(f"Player {env.current_player} turn ")
-env.roll_dice()
-env.get_triplets()
-while env.current_player == 0:
-    choice = input("Would you like to roll or bank? (r/b)\n>")
-    env.step(choice)
-    if env.remaining_dice == 0:
-        env.calculate_score()
+#env.play_game(isBotGame=True)
 
-    if env.remaining_dice == 0:
-        env.current_player = 1
+# Game / sec
+start_time = time.time()
+total = 0
+while time.time() - start_time < 60:
+    env.play_game(isBotGame=True)
+    total += 1
+
+print(f"\n{total} Game in 60 seconds")
+print(f"Average call : {total / 60:.2f} /s")
+
+# IDEE ENCODAGE
+# State :
+# [main player 0] [main player 1] [des libre]
+#                                      -> des libre [_, _, _, _, _] : 1 à 6 les vals et 0 pour vide
+# ACTION :
+# roll or bank [_, _] -> 1 ou 0  [index]
+#                                  -> index [_, _, _, _, _] : 1 à 6 les vals et 0 pour vide
+
