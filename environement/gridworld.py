@@ -13,7 +13,7 @@ class GridWorld:
             (0, 0),
             (size - 1, size - 1),
         ]  # Coins comme positions terminales
-        self.agent_pos = self._get_random_position()  # Position initiale aléatoire
+        self.agent_pos = (1,1)   #self._get_random_position()  # Position initiale aléatoire
         self.done = False
 
     def _get_random_position(self):
@@ -40,7 +40,7 @@ class GridWorld:
         return []
 
     def reset(self):
-        self.agent_pos = self._get_random_position()
+        self.agent_pos =  (1,1)  #self._get_random_position()
         self.done = False
         return self.state()
 

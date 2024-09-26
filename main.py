@@ -14,8 +14,8 @@ def select_game(game_name):
         action_size = 9
     elif game_name == "gridworld":
         game = GridWorld(size=5)
-        state_size = 25  # 5x5 grid size
-        action_size = 4  # 4 possible actions: up, down, left, right
+        state_size = 25
+        action_size = 4
     elif game_name == "lineworld":
         game = LineWorld(length=5, is_random=True, start_position=2)
         state_size = 5
@@ -47,7 +47,7 @@ def simulate_game(game, model, epsilon=0.0, manual=False):
                 action = manual_player(available_actions)
             else:
                 if (
-                    hasattr(game, "current_player") and game.current_player == 0
+                    hasattr(game, "current_player") and game.current_player == 1
                 ):  # DQN agent plays (Player 1)
                     print("Agent DQN's turn.")
                     available_actions = game.available_actions()
@@ -107,7 +107,7 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_dqn(game, model, state_size, action_size, episodes=200, opponent="random"):
+def train_dqn(game, model, state_size, action_size, episodes=10, opponent="random"):
     epsilon = 0.8
     model_opponent = None
     if opponent == "model":
