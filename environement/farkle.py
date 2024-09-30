@@ -238,7 +238,7 @@ class Farkle:
     def play_game(self, isBotGame=False):
         def solo_round(isb):
             if self.current_player == 0:
-                if not isBotGame:
+                if not isb:
                     choice = input("Would you like to roll or bank? (r/b)\n>")
                     self.step(choice)
                     if self.remaining_dice == 0:
@@ -255,26 +255,31 @@ class Farkle:
             solo_round(isBotGame)
         self.reset()
 
+    def get_state(self):
+        p1_bank = self.current_bank if(self.current_player == 0) else [0, 0, 0, 0, 0, 0]
+        p2_bank = self.current_bank if(self.current_player == 1) else [0, 0, 0, 0, 0, 0]
+        dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
+        return [self.current_player] + p1_bank + p2_bank + dice_list
 
 
 env = Farkle()
-#env.play_game(isBotGame=True)
+env.play_game()
 
 # Game / sec
-start_time = time.time()
-total = 0
-while time.time() - start_time < 60:
-    env.play_game(isBotGame=True)
-    total += 1
+#start_time = time.time()
+#total = 0
+#while time.time() - start_time < 30:
+#    env.play_game(isBotGame=True)
+ #   total += 1
 
-print(f"\n{total} Game in 60 seconds")
-print(f"Average call : {total / 60:.2f} /s")
+#print(f"\n{total} Game in 60 seconds")
+#print(f"Average call : {total / 30:.2f} /s")
 
 # IDEE ENCODAGE
 # State :
 # [main player 0] [main player 1] [des libre]
 #                                      -> des libre [_, _, _, _, _] : 1 à 6 les vals et 0 pour vide
 # ACTION :
-# roll or bank [_, _] -> 1 ou 0  [index]
+# roll or bank [0, 1] -> 1 ou 0  [index]
 #                                  -> index [_, _, _, _, _] : 1 à 6 les vals et 0 pour vide
 
