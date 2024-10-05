@@ -4,6 +4,7 @@ from DQL.DQL import build_model, choose_action, remember, replay, update_epsilon
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from environement.tictactoe import TicTacToe
+from environement.farkle import Farkle
 
 
 # Game selection logic
@@ -20,6 +21,8 @@ def select_game(game_name):
         game = LineWorld(length=5, is_random=True, start_position=2)
         state_size = 5
         action_size = 2  # Move left or right
+    elif game_name == "farkle":
+        game = Farkle()
     else:
         raise ValueError("Unknown game")
     return game, state_size, action_size
