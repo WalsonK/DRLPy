@@ -216,6 +216,8 @@ class Farkle:
                 else:
                     self.calculate_score()
                     self.switch_player()
+        if action == 's':
+            print(self.get_state())
 
     def bot_turn(self, botPlayer=1):
         print(f"Player {self.current_player} turn:")
@@ -253,6 +255,9 @@ class Farkle:
             solo_round(isBotGame)
         if any(s <= 1000 for s in self.scores):
             solo_round(isBotGame)
+            self.winner = self.scores.index(max(s for s in self.scores if s <= 1000))
+            self.done = True
+
         self.reset()
 
     def get_state(self):
@@ -260,6 +265,15 @@ class Farkle:
         p2_bank = self.current_bank if(self.current_player == 1) else [0, 0, 0, 0, 0, 0]
         dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
         return [self.current_player] + p1_bank + p2_bank + dice_list
+
+    def get_reward(self):
+        if self.done:
+            if self.winner == self.current_player:
+                return 1  # Victoire du joueur actuel
+            else:
+                return -1  # Défaite du joueur actuel
+        return 0  # Pas de reward si la partie n'est pas finie
+
 
 
 env = Farkle()
