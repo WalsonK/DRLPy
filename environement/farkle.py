@@ -255,8 +255,8 @@ class Farkle:
             solo_round(isBotGame)
         if any(s <= 1000 for s in self.scores):
             solo_round(isBotGame)
-            self.winner = self.scores.index(max(s for s in self.scores if s <= 1000))
-            self.done = True
+            # self.winner = self.scores.index(max(s for s in self.scores if s <= 1000))
+            # self.done = True
 
         self.reset()
 
@@ -287,13 +287,22 @@ env.play_game()
  #   total += 1
 
 #print(f"\n{total} Game in 60 seconds")
-#print(f"Average call : {total / 30:.2f} /s")
+#print(f"Average call : {total / 30:.2f} /s") # todo
 
 # IDEE ENCODAGE
 # State :
-# [main player 0] [main player 1] [des libre]
+# [current player] -> 0 ou 1
+# [main player 0] -> 11001 dés 1 [0, 1, 0, 0, 0, 0] dés 5  etc .....
+# [main player 1] -> [0, 0, 0, 0, 0, 1] dés 1 [0, 1, 0, 0, 0, 0] dés 5  etc .....
+# [des libre] -> [0, 0, 0, 0, 0, 1] dés 1 [0, 1, 0, 0, 0, 0] dés 5  etc .....
+# [scores]  current score / max score possible pour encoder le score entre 0 et 1
+
 #                                      -> des libre [_, _, _, _, _] : 1 à 6 les vals et 0 pour vide
 # ACTION :
-# roll or bank [0, 1] -> 1 ou 0  [index]
+# roll or bank [0, 1] -> 1 ou 0
+# [index] [3] -> selection des 2 dés à banquer
+
+
+
 #                                  -> index [_, _, _, _, _] : 1 à 6 les vals et 0 pour vide
 
