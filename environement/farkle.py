@@ -1,5 +1,6 @@
 import random
 import time
+from tqdm import tqdm
 
 
 def convert_input_list(array):
@@ -294,11 +295,21 @@ env = Farkle(printing=False)
 #env.play_game()
 
 # Game / sec
+# Temps total en secondes
+duration = 30
 start_time = time.time()
 total = 0
-while time.time() - start_time < 30:
-    env.play_game(isBotGame=True)
-    total += 1
+
+
+with tqdm(total=duration, desc="Playing game", unit="s", bar_format='{l_bar}{bar}{n_fmt}/{total_fmt} s') as pbar:
+    while time.time() - start_time < duration:
+        env.play_game(isBotGame=True)
+        total += 1
+
+        elapsed_time = time.time() - start_time
+        progress = min(elapsed_time, duration)
+        pbar.n = round(progress, 2)
+        pbar.refresh()
 
 print(f"\n{total} Game in 30 seconds")
 game_per_second = total / 30
