@@ -13,7 +13,8 @@ def convert_input_list(array):
 
 
 class Farkle:
-    def __init__(self, winning_score=10000):
+    def __init__(self, winning_score=10000, printing=True):
+        self.printify = printing
         self.winning_score = winning_score
         self.scores = [0, 0]  # Scores des deux joueurs
         self.current_player = 0  # Indique quel joueur est en train de jouer (0 ou 1)
@@ -79,14 +80,16 @@ class Farkle:
     def roll_dice(self):
         # Simule le lancer de dés restants
         self.dice_list = [random.randint(1, 6) for _ in range(self.remaining_dice)]
-        self.print_dice(self.dice_list)
+        if self.printify:
+            self.print_dice(self.dice_list)
 
     def print_dice(self, dlist):
         # Display dices
-        for line in range(5):
-            for dice in dlist:
-                print(self.dice_art[dice][line], end=" ")
-            print()
+        if self.printify:
+            for line in range(5):
+                for dice in dlist:
+                    print(self.dice_art[dice][line], end=" ")
+                print()
 
     def get_triplets(self):
         occurrences = {}
@@ -115,11 +118,12 @@ class Farkle:
         # Print triplets
         if len(triplets) > 0:
             self.current_bank += triplets.copy()
-            print(f"Player {self.current_player} Bank:")
-            self.print_dice(self.current_bank)
+            if self.printify:
+                print(f"Player {self.current_player} Bank:")
+                self.print_dice(self.current_bank)
 
-            # new dice list
-            print(f"new dice list:")
+                # new dice list
+                print(f"new dice list:")
             self.dice_list = new_dice_list
             self.print_dice(self.dice_list)
             self.remaining_dice = len(self.dice_list)
@@ -155,7 +159,8 @@ class Farkle:
                     self.current_turn_score += die * 10
 
         self.scores[self.current_player] += self.current_turn_score
-        print(f"Score of player {self.current_player}: {self.scores[self.current_player]}")
+        if self.printify:
+            print(f"Score of player {self.current_player}: {self.scores[self.current_player]}")
         self.current_turn_score = 0
 
     def switch_player(self):
@@ -163,7 +168,8 @@ class Farkle:
         self.remaining_dice = 6
         self.current_bank = []
         self.current_turn_score = 0
-        print(f"Game Score : {env.scores} ")
+        if self.printify:
+            print(f"Game Score : {env.scores} ")
 
     def step(self, action, banked=None):
         if action == 'r':
@@ -174,15 +180,17 @@ class Farkle:
                     self.current_bank = []
                     # calc score
                     self.calculate_score()
-                    print(f"Player {self.current_player} Bank: {self.current_bank}")
-                    print("Turn over")
+                    if self.printify:
+                        print(f"Player {self.current_player} Bank: {self.current_bank}")
+                        print("Turn over")
                     self.switch_player()
                 else:
                     self.current_bank.append(self.dice_list[0])
                     # calc score
                     self.calculate_score()
-                    print(f"Player {self.current_player} Bank: {self.current_bank}")
-                    print("Turn over")
+                    if self.printify:
+                        print(f"Player {self.current_player} Bank: {self.current_bank}")
+                        print("Turn over")
                     self.switch_player()
             else:
                 self.roll_dice()
@@ -196,8 +204,9 @@ class Farkle:
                 self.current_bank.append(self.dice_list[0])
                 # Calc score
                 self.calculate_score()
-                print(f"Player {self.current_player} Bank: {self.current_bank}")
-                print("Turn over")
+                if self.printify:
+                    print(f"Player {self.current_player} Bank: {self.current_bank}")
+                    print("Turn over")
                 self.switch_player()
             else:
                 if banked is None:
@@ -208,10 +217,12 @@ class Farkle:
                 else:
                     self.bank_dice(banked)
 
-                print(f"Player {self.current_player} Bank:")
+                if self.printify:
+                    print(f"Player {self.current_player} Bank:")
                 self.print_dice(self.current_bank)
                 if len(self.dice_list) > 0:
-                    print(f"new dice list:")
+                    if self.printify:
+                        print(f"new dice list:")
                     self.print_dice(self.dice_list)
                 else:
                     self.calculate_score()
@@ -220,18 +231,21 @@ class Farkle:
             print(self.get_state())
 
     def bot_turn(self, botPlayer=1):
-        print(f"Player {self.current_player} turn:")
+        if self.printify:
+            print(f"Player {self.current_player} turn:")
         self.roll_dice()
         self.get_triplets()
         if len(self.dice_list) > 0:
             while self.current_player == botPlayer:
                 action_rand = random.randint(0, 1)
                 if action_rand == 0:
-                    print(f"Action of Player {self.current_player} : Roll")
+                    if self.printify:
+                        print(f"Action of Player {self.current_player} : Roll")
                     self.step('r')
                 if action_rand == 1:
                     rand_bank = [random.randint(1, len(self.dice_list))]
-                    print(f"Action of Player {self.current_player} : Bank dice-{rand_bank}")
+                    if self.printify:
+                        print(f"Action of Player {self.current_player} : Bank dice-{rand_bank}")
                     self.step('b', banked=rand_bank)
         else:
             self.calculate_score()
@@ -250,7 +264,8 @@ class Farkle:
             else:
                 self.bot_turn()
 
-        print(f"Game Score : {env.scores} ")
+        if self.printify:
+            print(f"Game Score : {env.scores} ")
         while all(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
         if any(s <= 10000 for s in self.scores):
@@ -275,7 +290,7 @@ class Farkle:
         return 0  # Pas de reward si la partie n'est pas finie
 
 
-env = Farkle()
+env = Farkle(printing=False)
 #env.play_game()
 
 # Game / sec
