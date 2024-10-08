@@ -286,4 +286,6 @@ while time.time() - start_time < 30:
     total += 1
 
 print(f"\n{total} Game in 30 seconds")
-print(f"Average call : {total / 30:.2f} /s")
+game_per_second = total / 30
+second_per_game = game_per_second / 60
+print(f"Average call : {second_per_game / 30:.2f} s")
