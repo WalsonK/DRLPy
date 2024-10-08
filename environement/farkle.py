@@ -251,9 +251,9 @@ class Farkle:
                 self.bot_turn()
 
         print(f"Game Score : {env.scores} ")
-        while all(s <= 1000 for s in self.scores):
+        while all(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
-        if any(s <= 1000 for s in self.scores):
+        if any(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
             # self.winner = self.scores.index(max(s for s in self.scores if s <= 1000))
             # self.done = True
@@ -287,5 +287,4 @@ while time.time() - start_time < 30:
 
 print(f"\n{total} Game in 30 seconds")
 game_per_second = total / 30
-second_per_game = game_per_second / 60
-print(f"Average call : {second_per_game / 30:.2f} s")
+print(f"{game_per_second :.2f} Games/s")
