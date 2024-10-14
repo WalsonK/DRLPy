@@ -1,7 +1,7 @@
 import random
 import time
 from tqdm import tqdm
-
+import numpy as np
 
 def convert_input_list(array):
     res = []
@@ -290,6 +290,30 @@ class Farkle:
                 return -1  # Défaite du joueur actuel
         return 0  # Pas de reward si la partie n'est pas finie
 
+    def find_one(vec):
+        find_idx = np.where(vec == 1)
+        return find_idx
+
+    def find_two(vec):
+        find_idx = np.where(vec == 2)
+        return find_idx
+
+    def find_three(vec):
+        find_idx = np.where(vec == 3)
+        return find_idx
+
+    def find_four(vec):
+        find_idx = np.where(vec == 4)
+        return find_idx
+
+    def find_five(vec):
+        find_idx = np.where(vec == 5)
+        return find_idx
+
+    def find_six(vec):
+        find_idx = np.where(vec == 6)
+        return find_idx
+
 
 env = Farkle(printing=False)
 game_mode = input("Would you like to play ? (y/n)\n>")
@@ -314,3 +338,6 @@ elif game_mode == 'n':
     print(f"\n{total} Game in 30 seconds")
     game_per_second = total / 30
     print(f"{game_per_second :.2f} Games/s")
+
+
+
