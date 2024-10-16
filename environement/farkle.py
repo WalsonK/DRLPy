@@ -2,6 +2,7 @@ import random
 import time
 from tqdm import tqdm
 import numpy as np
+from environement.tools import calculate_score
 
 def convert_input_list(array):
     res = []
@@ -136,32 +137,16 @@ class Farkle:
                 self.remaining_dice -= 1
 
     def calculate_score(self):
-        occurrences = {}
+        # Use the new scoring system
+        self.current_turn_score = calculate_score(self.current_bank)
 
-        # Calc occurrences
-        for die in self.current_bank:
-            if die in occurrences:
-                occurrences[die] += 1
-            else:
-                occurrences[die] = 1
-
-        for die, count in occurrences.items():
-            while count >= 3:
-                if die == 1:
-                    self.current_turn_score += 1000
-                else:
-                    self.current_turn_score += die * 100
-                count -= 3
-
-            for _ in range(count):
-                if die == 1:
-                    self.current_turn_score += 100
-                else:
-                    self.current_turn_score += die * 10
-
+        # Add to the current player's total score
         self.scores[self.current_player] += self.current_turn_score
+
         if self.printify:
             print(f"Score of player {self.current_player}: {self.scores[self.current_player]}")
+
+        # Reset current turn score for the next round
         self.current_turn_score = 0
 
     def switch_player(self):
@@ -290,29 +275,7 @@ class Farkle:
                 return -1  # Défaite du joueur actuel
         return 0  # Pas de reward si la partie n'est pas finie
 
-    def find_one(vec):
-        find_idx = np.where(vec == 1)
-        return find_idx
 
-    def find_two(vec):
-        find_idx = np.where(vec == 2)
-        return find_idx
-
-    def find_three(vec):
-        find_idx = np.where(vec == 3)
-        return find_idx
-
-    def find_four(vec):
-        find_idx = np.where(vec == 4)
-        return find_idx
-
-    def find_five(vec):
-        find_idx = np.where(vec == 5)
-        return find_idx
-
-    def find_six(vec):
-        find_idx = np.where(vec == 6)
-        return find_idx
 
 
 env = Farkle(printing=False)
