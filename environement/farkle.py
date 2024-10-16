@@ -278,29 +278,29 @@ class Farkle:
 
 
 
-env = Farkle(printing=False)
-game_mode = input("Would you like to play ? (y/n)\n>")
-if game_mode == 'y':
-    env.play_game()
-elif game_mode == 'n':
-    # Game / sec
-    duration = 30
-    start_time = time.time()
-    total = 0
-
-    with tqdm(total=duration, desc="Playing game", unit="s", bar_format='{l_bar}{bar} {n_fmt}/{total_fmt} s') as pbar:
-        while time.time() - start_time < duration:
-            env.play_game(isBotGame=True)
-            total += 1
-
-            elapsed_time = time.time() - start_time
-            progress = min(elapsed_time, duration)
-            pbar.n = round(progress, 2)
-            pbar.refresh()
-
-    print(f"\n{total} Game in 30 seconds")
-    game_per_second = total / 30
-    print(f"{game_per_second :.2f} Games/s")
+# env = Farkle(printing=False)
+# game_mode = input("Would you like to play ? (y/n)\n>")
+# if game_mode == 'y':
+#     env.play_game()
+# elif game_mode == 'n':
+#     # Game / sec
+#     duration = 30
+#     start_time = time.time()
+#     total = 0
+#
+#     with tqdm(total=duration, desc="Playing game", unit="s", bar_format='{l_bar}{bar} {n_fmt}/{total_fmt} s') as pbar:
+#         while time.time() - start_time < duration:
+#             env.play_game(isBotGame=True)
+#             total += 1
+#
+#             elapsed_time = time.time() - start_time
+#             progress = min(elapsed_time, duration)
+#             pbar.n = round(progress, 2)
+#             pbar.refresh()
+#
+#     print(f"\n{total} Game in 30 seconds")
+#     game_per_second = total / 30
+#     print(f"{game_per_second :.2f} Games/s")
 
 
 
