@@ -1,6 +1,7 @@
 import random
 import time
 from tqdm import tqdm
+from itertools import chain, combinations
 
 
 def convert_input_list(array):
@@ -11,6 +12,11 @@ def convert_input_list(array):
         except ValueError:
             continue
     return res
+
+
+def powerset(iterable):
+    xs = list(iterable)
+    return chain.from_iterable(combinations(xs, n) for n in range(len(xs) + 1))
 
 
 class Farkle:
@@ -76,7 +82,25 @@ class Farkle:
     def available_actions(self):
         # Ici on peut inclure la logique pour déterminer les actions possibles
         # On suppose qu'un joueur peut toujours "lancer" (roll) ou "banquer" (bank)
-        return ['roll', 'bank']
+
+        original_vec = self.dice_selectable()
+        # Calc all vecs possible :
+        index = [i for i, x in enumerate(original_vec) if x == 1]
+
+        av_actions = {}
+        for comb in powerset(index):
+            new_list = [0] * len(original_vec)
+            for id in comb:
+                new_list[id] = 1
+
+            binary_int = int("".join(map(str, new_list)), 2)
+            av_actions[binary_int] = new_list
+
+        return av_actions
+        # return ['roll', 'bank']
+
+    def dice_selectable(self):
+        return [1, 0, 1, 0, 0, 1]
 
     def roll_dice(self):
         # Simule le lancer de dés restants
@@ -256,7 +280,19 @@ class Farkle:
         def solo_round(isb):
             if self.current_player == 0:
                 if not isb:
-                    choice = input("Would you like to roll or bank? (r/b)\n>")
+                    print("Would you like to :")
+                    av_actions = self.available_actions()
+                    print(av_actions)
+                    for action, vector in av_actions.items():
+                        human_indice = [i +1 for i, x in enumerate(vector) if x == 1]
+                        if human_indice:
+                            if len(human_indice) > 1:
+                                print(f"{action} : pour sélectionner les dés suivants {human_indice}")
+                            else:
+                                print(f"{action} : pour sélectionner le {human_indice} dé")
+                        else:
+                            print(f"{action} : pour meilleure score !")
+                    choice = input(">")
                     self.step(choice)
                     if self.remaining_dice == 0:
                         self.calculate_score()
@@ -267,6 +303,7 @@ class Farkle:
 
         if self.printify:
             print(f"Game Score : {env.scores} ")
+        self.roll_dice()
         while all(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
         if any(s <= 10000 for s in self.scores):
@@ -291,10 +328,12 @@ class Farkle:
         return 0  # Pas de reward si la partie n'est pas finie
 
 
-env = Farkle(printing=False)
+env = Farkle(printing=True)
 game_mode = input("Would you like to play ? (y/n)\n>")
 if game_mode == 'y':
     env.play_game()
+elif game_mode == 't':
+    print(env.available_actions())
 elif game_mode == 'n':
     # Game / sec
     duration = 30
