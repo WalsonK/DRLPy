@@ -3,8 +3,7 @@ import time
 from tqdm import tqdm
 from itertools import chain, combinations
 import numpy as np
-from environement.tools import calculate_score
-
+from collections import Counter
 
 
 def convert_input_list(array):
@@ -82,11 +81,22 @@ class Farkle:
         self.done = False
         self.winner = None
 
-    def available_actions(self):
-        # Ici on peut inclure la logique pour déterminer les actions possibles
-        # On suppose qu'un joueur peut toujours "lancer" (roll) ou "banquer" (bank)
+    def get_state(self):
+        p1_bank = self.current_bank if(self.current_player == 0) else [0, 0, 0, 0, 0, 0]
+        p2_bank = self.current_bank if(self.current_player == 1) else [0, 0, 0, 0, 0, 0]
+        dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
+        return [self.current_player] + p1_bank + p2_bank + dice_list
 
-        original_vec = self.dice_selectable()
+    def get_reward(self):
+        if self.done:
+            if self.winner == self.current_player:
+                return 1  # Victoire du joueur actuel
+            else:
+                return -1  # Défaite du joueur actuel
+        return 0  # Pas de reward si la partie n'est pas finie
+
+    def available_actions(self):
+        score, original_vec = self.calculate_score()
         # Calc all vecs possible :
         index = [i for i, x in enumerate(original_vec) if x == 1]
 
@@ -99,26 +109,149 @@ class Farkle:
             binary_int = int("".join(map(str, new_list)), 2)
             av_actions[binary_int] = new_list
 
+        av_actions[0] = [score]
+
         return av_actions
         # return ['roll', 'bank']
 
-    def dice_selectable(self):
-        return [1, 0, 1, 0, 0, 1]
-
     def roll_dice(self):
-        # Simule le lancer de dés restants
         self.dice_list = [random.randint(1, 6) for _ in range(self.remaining_dice)]
         if self.printify:
             self.print_dice(self.dice_list)
 
-    def print_dice(self, dlist):
-        # Display dices
-        if self.printify:
-            for line in range(5):
-                for dice in dlist:
-                    print(self.dice_art[dice][line], end=" ")
-                print()
+    def calculate_score(self) -> (int, list):
+        """
+        Calculate the maximum possible score based on the given dice rolls.
 
+        This function evaluates the score from a list of dice, checking for special combinations
+        like a straight (1-6), three pairs, or multiple identical dice. It then computes the
+        score based on the rules and returns the total score.
+
+        Returns:
+            int: The total score calculated based on the combinations found.
+        """
+        total_score = 0
+
+        # Check for specific combinations
+        if self.check_straight():
+            return 1500  # A straight gives the maximum score immediately
+
+        if self.check_three_pairs():
+            return 1000  # Three pairs give a score of 1000
+
+        # Handle multiples (3, 4, 5, or 6 of the same number)
+        multiples_score, used_dice, binary_multiple = self.check_multiples()
+        total_score += multiples_score
+
+        # Handle individual dice (1s and 5s) that are not part of other combinations
+        score, binary_solo = self.check_individual_scores(used_dice)
+        total_score += score
+
+        # Mix binary selectable dice
+        binary_selectable = [max(m, s) for m, s in zip(binary_multiple, binary_solo)]
+
+        return total_score, binary_selectable
+
+    def check_straight(self) -> bool:
+        """
+        Check if the given dice result in a straight (1-6).
+
+        A straight is a combination where all numbers from 1 to 6 are rolled.
+
+        Returns:
+            bool: True if the dice form a straight (1-6), False otherwise.
+        """
+        return sorted(self.dice_list) == [1, 2, 3, 4, 5, 6]
+
+    def check_three_pairs(self) -> bool:
+        """
+        Check if the given dice contain three pairs.
+
+        A combination of three pairs is when there are exactly three different numbers,
+        each occurring twice.
+
+        Returns:
+            bool: True if the dice contain three pairs, False otherwise.
+        """
+        counts = Counter(self.dice_list)
+        pairs = sum(1 for count in counts.values() if count == 2)
+        return pairs == 3
+
+    def check_multiples(self) -> tuple:
+        """
+        Check for multiples (3, 4, 5x, or 6 of the same number) in the dice.
+
+        This function calculates the score for any multiples found and returns the score
+        along with a list of dice that have been used for these combinations, and a binary list
+        indicating which dice were used (1 for used, 0 for not used).
+
+        Returns:
+            tuple: A tuple containing:
+                - score (int): The score based on the multiples found.
+                - used_dice (list): A list of integers representing the dice used in the multiples.
+                - binary_used_dice (list): A list of integers (1 or 0) indicating which dice were used.
+        """
+        counts = Counter(self.dice_list)
+        score = 0
+        used_dice = []
+
+        binary_used_dice = [0] * len(self.dice_list)
+
+        for num, count in counts.items():
+            if count >= 3:
+                base_score = 1000 if num == 1 else num * 100  # 1000 for three 1s, otherwise num * 100
+
+                score += base_score
+
+                if count == 4:
+                    score += base_score  # x2 for 4 dice
+                elif count == 5:
+                    score += base_score * 3  # x4 for 5 dice
+                elif count == 6:
+                    score += base_score * 7  # x8 for 6 dice
+
+                used_dice.extend([num] * count)
+
+                used_count = 0
+                for i, d in enumerate(self.dice_list):
+                    if d == num and used_count < count:
+                        binary_used_dice[i] = 1
+                        used_count += 1
+
+        return score, used_dice, binary_used_dice
+
+    def check_individual_scores(self, used_dice: list) -> (int, list):
+        """
+        Calculate points for individual dice (1s and 5s) that are not part of any combinations.
+
+        This function handles scoring for any remaining 1s or 5s that have not been used
+        in other combinations like multiples.
+
+        Args:
+            used_dice (list): A list of integers representing dice already used in other combinations.
+
+        Returns:
+            int: The score based on the remaining individual 1s and 5s.
+        """
+        remaining_counts = Counter(self.dice_list) - Counter(used_dice)
+        score = 0
+        binary_used_dice = [0] * len(self.dice_list)
+
+        score += remaining_counts[1] * 100  # Each remaining 1 is worth 100 points
+        score += remaining_counts[5] * 50  # Each remaining 5 is worth 50 points
+
+        used_count_1s = 0
+        used_count_5s = 0
+        for i, d in enumerate(self.dice_list):
+            if d == 1 and used_count_1s < remaining_counts[1]:
+                binary_used_dice[i] = 1
+                used_count_1s += 1
+            elif d == 5 and used_count_5s < remaining_counts[5]:
+                binary_used_dice[i] = 1
+                used_count_5s += 1
+
+        return score, binary_used_dice
+    """
     def get_triplets(self):
         occurrences = {}
 
@@ -174,6 +307,7 @@ class Farkle:
 
         # Reset current turn score for the next round
         self.current_turn_score = 0
+    """
 
     def switch_player(self):
         self.current_player = 1 if self.current_player == 0 else 0
@@ -184,6 +318,11 @@ class Farkle:
             print(f"Game Score : {self.scores} ")
 
     def step(self, action, banked=None):
+        if action == 0:
+            score, _ = self.calculate_score()
+            self.scores[self.current_player] += score
+            self.switch_player()
+
         if action == 'r':
             if self.remaining_dice == 1:
                 self.roll_dice()
@@ -246,7 +385,6 @@ class Farkle:
         if self.printify:
             print(f"Player {self.current_player} turn:")
         self.roll_dice()
-        self.get_triplets()
         if len(self.dice_list) > 0:
             while self.current_player == botPlayer:
                 action_rand = random.randint(0, 1)
@@ -265,22 +403,23 @@ class Farkle:
 
     def play_game(self, isBotGame=False):
         def solo_round(isb):
+            print(f"player to play : {self.current_player}")
             if self.current_player == 0:
                 if not isb:
                     print("Would you like to :")
                     av_actions = self.available_actions()
-                    print(av_actions)
                     for action, vector in av_actions.items():
                         human_indice = [i +1 for i, x in enumerate(vector) if x == 1]
                         if human_indice:
                             if len(human_indice) > 1:
-                                print(f"{action} : pour sélectionner les dés suivants {human_indice}")
+                                print(f"{action} : Select les dés {human_indice} et relancer les autres")
                             else:
-                                print(f"{action} : pour sélectionner le {human_indice} dé")
+                                print(f"{action} : Select le {human_indice} dé et relancer les autres")
                         else:
-                            print(f"{action} : pour meilleure score !")
-                    choice = input(">")
+                            print(f"{action} : Bank {vector[0]} score et terminer tour !")
+                    choice = int(input("> "))
                     self.step(choice)
+
                     if self.remaining_dice == 0:
                         self.calculate_score()
                 else:
@@ -300,20 +439,13 @@ class Farkle:
 
         self.reset()
 
-    def get_state(self):
-        p1_bank = self.current_bank if(self.current_player == 0) else [0, 0, 0, 0, 0, 0]
-        p2_bank = self.current_bank if(self.current_player == 1) else [0, 0, 0, 0, 0, 0]
-        dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
-        return [self.current_player] + p1_bank + p2_bank + dice_list
-
-    def get_reward(self):
-        if self.done:
-            if self.winner == self.current_player:
-                return 1  # Victoire du joueur actuel
-            else:
-                return -1  # Défaite du joueur actuel
-        return 0  # Pas de reward si la partie n'est pas finie
-
+    def print_dice(self, dlist):
+        # Display dices
+        if self.printify:
+            for line in range(5):
+                for dice in dlist:
+                    print(self.dice_art[dice][line], end=" ")
+                print()
 
 
 env = Farkle(printing=True)
@@ -341,28 +473,3 @@ elif game_mode == 'n':
     print(f"\n{total} Game in 30 seconds")
     game_per_second = total / 30
     print(f"{game_per_second :.2f} Games/s")
-
-
-# env = Farkle(printing=False)
-# game_mode = input("Would you like to play ? (y/n)\n>")
-# if game_mode == 'y':
-#     env.play_game()
-# elif game_mode == 'n':
-#     # Game / sec
-#     duration = 30
-#     start_time = time.time()
-#     total = 0
-#
-#     with tqdm(total=duration, desc="Playing game", unit="s", bar_format='{l_bar}{bar} {n_fmt}/{total_fmt} s') as pbar:
-#         while time.time() - start_time < duration:
-#             env.play_game(isBotGame=True)
-#             total += 1
-#
-#             elapsed_time = time.time() - start_time
-#             progress = min(elapsed_time, duration)
-#             pbar.n = round(progress, 2)
-#             pbar.refresh()
-#
-#     print(f"\n{total} Game in 30 seconds")
-#     game_per_second = total / 30
-#     print(f"{game_per_second :.2f} Games/s")
