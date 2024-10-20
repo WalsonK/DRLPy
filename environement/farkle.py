@@ -4,6 +4,7 @@ from tqdm import tqdm
 import numpy as np
 from environement.tools import calculate_score
 
+
 def convert_input_list(array):
     res = []
     for element in array:
@@ -155,7 +156,7 @@ class Farkle:
         self.current_bank = []
         self.current_turn_score = 0
         if self.printify:
-            print(f"Game Score : {env.scores} ")
+            print(f"Game Score : {self.scores} ")
 
     def step(self, action, banked=None):
         if action == 'r':
@@ -251,7 +252,7 @@ class Farkle:
                 self.bot_turn()
 
         if self.printify:
-            print(f"Game Score : {env.scores} ")
+            print(f"Game Score : {self.scores} ")
         while all(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
         if any(s <= 10000 for s in self.scores):
