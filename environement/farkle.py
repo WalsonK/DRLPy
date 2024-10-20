@@ -2,6 +2,9 @@ import random
 import time
 from tqdm import tqdm
 from itertools import chain, combinations
+import numpy as np
+from environement.tools import calculate_score
+
 
 
 def convert_input_list(array):
@@ -160,32 +163,16 @@ class Farkle:
                 self.remaining_dice -= 1
 
     def calculate_score(self):
-        occurrences = {}
+        # Use the new scoring system
+        self.current_turn_score = calculate_score(self.current_bank)
 
-        # Calc occurrences
-        for die in self.current_bank:
-            if die in occurrences:
-                occurrences[die] += 1
-            else:
-                occurrences[die] = 1
-
-        for die, count in occurrences.items():
-            while count >= 3:
-                if die == 1:
-                    self.current_turn_score += 1000
-                else:
-                    self.current_turn_score += die * 100
-                count -= 3
-
-            for _ in range(count):
-                if die == 1:
-                    self.current_turn_score += 100
-                else:
-                    self.current_turn_score += die * 10
-
+        # Add to the current player's total score
         self.scores[self.current_player] += self.current_turn_score
+
         if self.printify:
             print(f"Score of player {self.current_player}: {self.scores[self.current_player]}")
+
+        # Reset current turn score for the next round
         self.current_turn_score = 0
 
     def switch_player(self):
@@ -194,7 +181,7 @@ class Farkle:
         self.current_bank = []
         self.current_turn_score = 0
         if self.printify:
-            print(f"Game Score : {env.scores} ")
+            print(f"Game Score : {self.scores} ")
 
     def step(self, action, banked=None):
         if action == 'r':
@@ -328,6 +315,7 @@ class Farkle:
         return 0  # Pas de reward si la partie n'est pas finie
 
 
+
 env = Farkle(printing=True)
 game_mode = input("Would you like to play ? (y/n)\n>")
 if game_mode == 'y':
@@ -353,3 +341,28 @@ elif game_mode == 'n':
     print(f"\n{total} Game in 30 seconds")
     game_per_second = total / 30
     print(f"{game_per_second :.2f} Games/s")
+
+
+# env = Farkle(printing=False)
+# game_mode = input("Would you like to play ? (y/n)\n>")
+# if game_mode == 'y':
+#     env.play_game()
+# elif game_mode == 'n':
+#     # Game / sec
+#     duration = 30
+#     start_time = time.time()
+#     total = 0
+#
+#     with tqdm(total=duration, desc="Playing game", unit="s", bar_format='{l_bar}{bar} {n_fmt}/{total_fmt} s') as pbar:
+#         while time.time() - start_time < duration:
+#             env.play_game(isBotGame=True)
+#             total += 1
+#
+#             elapsed_time = time.time() - start_time
+#             progress = min(elapsed_time, duration)
+#             pbar.n = round(progress, 2)
+#             pbar.refresh()
+#
+#     print(f"\n{total} Game in 30 seconds")
+#     game_per_second = total / 30
+#     print(f"{game_per_second :.2f} Games/s")
