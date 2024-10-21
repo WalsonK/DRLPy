@@ -259,6 +259,8 @@ class Farkle:
         self.current_turn_score = 0
         if self.printify:
             print(f"Game Score : {self.scores} ")
+            print(f"Player {self.current_player} Turn :")
+        self.roll_dice()
 
     def step(self, dice_selected: list):
         if len(dice_selected) == 1:
@@ -272,60 +274,38 @@ class Farkle:
             self.current_turn_score += score
             count_dice_used = dice_selected.count(1)
             self.remaining_dice -= count_dice_used
-            self.roll_dice()
-            # Check Farkle case
-            _, b = self.calculate_score(self.dice_list)
-            count_no_selectable = b.count(0)
-            if len(self.dice_list) == count_no_selectable:
-                print("FARKLE !!!!")
+            if self.remaining_dice == 0:  # Select all dices
+                self.scores[self.current_player] += self.current_turn_score
                 self.switch_player()
+            else:
+                self.roll_dice()
+                # Check Farkle case
+                _, b = self.calculate_score(self.dice_list)
+                count_no_selectable = b.count(0)
+                if len(self.dice_list) == count_no_selectable:
+                    print("FARKLE !!!!")
+                    self.switch_player()
 
     def bot_turn(self, botPlayer=1):
+        av_actions = self.available_actions()
+        action_random = random.choice(list(av_actions.keys()))
         if self.printify:
-            print(f"Player {self.current_player} turn:")
-        self.roll_dice()
-        if len(self.dice_list) > 0:
-            while self.current_player == botPlayer:
-                action_rand = random.randint(0, 1)
-                if action_rand == 0:
-                    if self.printify:
-                        print(f"Action of Player {self.current_player} : Roll")
-                    self.step('r')
-                if action_rand == 1:
-                    rand_bank = [random.randint(1, len(self.dice_list))]
-                    if self.printify:
-                        print(f"Action of Player {self.current_player} : Bank dice-{rand_bank}")
-                    self.step('b', banked=rand_bank)
-        else:
-            self.calculate_score()
-            self.switch_player()
+            self.print_available_actions(av_actions)
+            print(f"Player {self.current_player} choose action {action_random}")
+        self.step(av_actions[action_random])
 
     def play_game(self, isBotGame=False):
         def solo_round(isb):
             if self.current_player == 0:
+                if self.current_turn_score > 0:
+                    print(f"Current turn score : {self.current_turn_score}")
                 if not isb:
-                    if self.current_turn_score > 0:
-                        print(f"Current turn score : {self.current_turn_score}")
                     print("Would you like to :")
                     av_actions = self.available_actions()
-                    for action, vector in av_actions.items():
-                        human_indice = [i +1 for i, x in enumerate(vector) if x == 1]
-                        if human_indice:
-                            if len(human_indice) > 1:
-                                print(f"{action} : Select les dés {human_indice} et relancer les autres")
-                            else:
-                                print(f"{action} : Select le {human_indice} dé et relancer les autres")
-                        else:
-                            msg = f"{action} : Bank {vector[0]}"
-                            if self.current_turn_score > 0:
-                                msg += f" + {self.current_turn_score}"
-                            msg += f" score et terminer tour !"
-                            print(msg)
+                    if self.printify:
+                        self.print_available_actions(av_actions)
                     choice = int(input("> "))
                     self.step(av_actions[choice])
-
-                    if self.remaining_dice == 0:
-                        self.calculate_score()
                 else:
                     self.bot_turn(botPlayer=0)
             else:
@@ -338,8 +318,6 @@ class Farkle:
             solo_round(isBotGame)
         if any(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
-            # self.winner = self.scores.index(max(s for s in self.scores if s <= 1000))
-            # self.done = True
 
         self.reset()
 
@@ -350,6 +328,21 @@ class Farkle:
                 for dice in dlist:
                     print(self.dice_art[dice][line], end=" ")
                 print()
+
+    def print_available_actions(self, available_actions):
+        for action, vector in available_actions.items():
+            human_indice = [i + 1 for i, x in enumerate(vector) if x == 1]
+            if human_indice:
+                if len(human_indice) > 1:
+                    print(f"{action} : Select les dés {human_indice} et relancer les autres")
+                else:
+                    print(f"{action} : Select le {human_indice} dé et relancer les autres")
+            else:
+                msg = f"{action} : Bank {vector[0]}"
+                if self.current_turn_score > 0:
+                    msg += f" + {self.current_turn_score}"
+                msg += f" score et terminer tour !"
+                print(msg)
 
 
 env = Farkle(printing=True)
