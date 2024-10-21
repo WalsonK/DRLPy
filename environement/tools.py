@@ -24,6 +24,9 @@ def calculate_score(dice: list) -> (int, list):
     if check_three_pairs(dice):
         return 1000  # Three pairs give a score of 1000
 
+    if check_six_no_scoring_dice(dice):
+        return 500  # Six no scoring dice give a score of 500
+
     # Handle multiples (3, 4, 5, or 6 of the same number)
     multiples_score, used_dice, binary_multiple = check_multiples(dice)
     total_score += multiples_score
@@ -117,6 +120,42 @@ def check_multiples(dice: list) -> tuple:
 
     return score, used_dice, binary_used_dice
 
+def check_six_no_scoring_dice(dice: list) -> int:
+    """
+    Check if none of the six dice result in any scoring combinations.
+
+    This function determines whether the current set of six dice contains
+    no scoring combinations (such as a straight, three pairs, multiples,
+    or individual 1s and 5s). If no scoring combination is detected, the
+    function returns a score of 500 for the "Six no scoring dice" rule.
+
+    Args:
+        dice (list): A list of integers representing the dice rolled (values between 1 and 6).
+
+    Returns:
+        int: Returns 500 if none of the dice result in a scoring combination, otherwise returns 0.
+    """
+    # Vérifier s'il y a une suite (1-6)
+    if check_straight(dice):
+        return False
+
+    # Vérifier s'il y a trois paires
+    if check_three_pairs(dice):
+        return False
+
+    # Vérifier les multiples (3 dés identiques ou plus)
+    score_multiples, _, _ = check_multiples(dice)
+    if score_multiples > 0:
+        return False
+
+    # Vérifier s'il y a des 1 ou des 5 individuels
+    score_individuals, _ = check_individual_scores(dice, [])
+    if score_individuals > 0:
+        return False
+
+    # Si aucun score n'a été détecté
+    return True
+
 
 def check_individual_scores(dice: list, used_dice: list) -> (int, list):
     """
@@ -152,5 +191,5 @@ def check_individual_scores(dice: list, used_dice: list) -> (int, list):
     return score, binary_used_dice
 
 
-dice = [2, 5, 2, 1, 2, 6]
+dice = [3, 3, 4, 4, 2, 6]
 print(calculate_score(dice))
