@@ -393,7 +393,7 @@ elif game_mode == 't':
     print(env.available_actions())
 elif game_mode == 'n':
     # Game / sec
-    duration = 200
+    duration = 30
     start_time = time.time()
     total = 0
 
