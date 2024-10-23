@@ -143,10 +143,14 @@ class Farkle:
 
         # Check for specific combinations
         if self.check_straight(dices):
-            return 1500, [0, 0, 0, 0, 0, 0]  # A straight gives the maximum score immediately
+            return 1500, [0] * len(dices)  # A straight gives the maximum score immediately
 
         if self.check_three_pairs(dices):
-            return 1000, [0, 0, 0, 0, 0, 0]  # Three pairs give a score of 1000
+            return 1000, [0] * len(dices)  # Three pairs give a score of 1000
+
+        # Check for "Six no scoring dice" rule only on the first roll (when remaining_dice == 6)
+        if self.remaining_dice == 6 and self.check_six_no_scoring_dice(dices):
+            return 500, [0] * len(dices)
 
         # Handle multiples (3, 4, 5, or 6 of the same number)
         multiples_score, used_dice, binary_multiple = self.check_multiples(dices)
@@ -228,6 +232,42 @@ class Farkle:
                         used_count += 1
 
         return score, used_dice, binary_used_dice
+
+    def check_six_no_scoring_dice(self ,dice: list) -> bool:
+        """
+        Check if none of the six dice result in any scoring combinations.
+
+        This function determines whether the current set of six dice contains
+        no scoring combinations (such as a straight, three pairs, multiples,
+        or individual 1s and 5s). If no scoring combination is detected, the
+        function returns a score of 500 for the "Six no scoring dice" rule.
+
+        Args:
+            dice (list): A list of integers representing the dice rolled (values between 1 and 6).
+
+        Returns:
+            int: Returns 500 if none of the dice result in a scoring combination, otherwise returns 0.
+        """
+        # Vérifier s'il y a une suite (1-6)
+        if self.check_straight(dice):
+            return False
+
+        # Vérifier s'il y a trois paires
+        if self.check_three_pairs(dice):
+            return False
+
+        # Vérifier les multiples (3 dés identiques ou plus)
+        score_multiples, _, _ = self.check_multiples(dice)
+        if score_multiples > 0:
+            return False
+
+        # Vérifier s'il y a des 1 ou des 5 individuels
+        score_individuals, _ = self.check_individual_scores(dice, [])
+        if score_individuals > 0:
+            return False
+
+        # Si aucun score n'a été détecté
+        return True
 
     def check_individual_scores(self, dices: list, used_dice: list) -> (int, list):
         """

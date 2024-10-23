@@ -110,7 +110,7 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_dqn(game, model, state_size, action_size, episodes=10, opponent="random"):
+def train_dqn(game, model, state_size, action_size, episodes=100, opponent="random", max_steps=30):
     epsilon = 0.8
     model_opponent = None
     if opponent == "model":
@@ -120,7 +120,9 @@ def train_dqn(game, model, state_size, action_size, episodes=10, opponent="rando
         state = game.reset()
         total_reward = 0
         done = False
-        while not done:
+        step_count = 0
+
+        while not done and step_count < max_steps:
             available_actions = game.available_actions()
 
             if (
@@ -139,18 +141,23 @@ def train_dqn(game, model, state_size, action_size, episodes=10, opponent="rando
             remember(state, action, reward, next_state, done)
             state = next_state
             total_reward += reward
+            step_count += 1
 
             if done:
                 print(
-                    f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}"
+                    f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}"
                 )
                 break
+
+        if not done:
+            print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
         replay(model, action_size)  # Replay and update DQN model
         if opponent == "model":
             replay(model_opponent, action_size)
 
         epsilon = update_epsilon(epsilon)
+
 
 
 if __name__ == "__main__":
