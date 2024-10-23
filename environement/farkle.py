@@ -118,6 +118,15 @@ class Farkle:
         self.dice_list = [random.randint(1, 6) for _ in range(self.remaining_dice)]
         if self.printify:
             self.print_dice(self.dice_list)
+        if self.check_straight(self.dice_list) or self.check_three_pairs(self.dice_list):
+            score, _ = self.calculate_score(self.dice_list)
+            self.current_turn_score += score
+            if self.printify:
+                if self.check_straight(self.dice_list):
+                    print(f"Et c'est un straight donc + {score} points !")
+                elif self.check_three_pairs(self.dice_list):
+                    print(f"Trois pairs donc + {score} points !")
+            self.roll_dice()
 
     def calculate_score(self, dices: list) -> (int, list):
         """
@@ -134,10 +143,10 @@ class Farkle:
 
         # Check for specific combinations
         if self.check_straight(dices):
-            return 1500  # A straight gives the maximum score immediately
+            return 1500, [0, 0, 0, 0, 0, 0]  # A straight gives the maximum score immediately
 
         if self.check_three_pairs(dices):
-            return 1000  # Three pairs give a score of 1000
+            return 1000, [0, 0, 0, 0, 0, 0]  # Three pairs give a score of 1000
 
         # Handle multiples (3, 4, 5, or 6 of the same number)
         multiples_score, used_dice, binary_multiple = self.check_multiples(dices)
