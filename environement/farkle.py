@@ -82,10 +82,8 @@ class Farkle:
         self.winner = None
 
     def get_state(self):
-        p1_bank = self.current_bank if(self.current_player == 0) else [0, 0, 0, 0, 0, 0]
-        p2_bank = self.current_bank if(self.current_player == 1) else [0, 0, 0, 0, 0, 0]
         dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
-        return [self.current_player] + p1_bank + p2_bank + dice_list
+        return [self.current_player] + dice_list + [self.current_turn_score] + self.scores
 
     def get_reward(self):
         if self.done:
@@ -112,13 +110,12 @@ class Farkle:
         av_actions[0] = [score]
 
         return av_actions
-        # return ['roll', 'bank']
 
     def roll_dice(self):
         self.dice_list = [random.randint(1, 6) for _ in range(self.remaining_dice)]
         if self.printify:
             self.print_dice(self.dice_list)
-        if self.check_straight(self.dice_list) or self.check_three_pairs(self.dice_list):
+        if self.remaining_dice == 6 and (self.check_straight(self.dice_list) or self.check_three_pairs(self.dice_list)):
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
             if self.printify:
@@ -332,7 +329,8 @@ class Farkle:
                 _, b = self.calculate_score(self.dice_list)
                 count_no_selectable = b.count(0)
                 if len(self.dice_list) == count_no_selectable:
-                    print("FARKLE !!!!")
+                    if self.printify:
+                        print("FARKLE !!!!")
                     self.switch_player()
 
     def bot_turn(self, botPlayer=1):
@@ -346,7 +344,7 @@ class Farkle:
     def play_game(self, isBotGame=False):
         def solo_round(isb):
             if self.current_player == 0:
-                if self.current_turn_score > 0:
+                if self.current_turn_score > 0 and self.printify:
                     print(f"Current turn score : {self.current_turn_score}")
                 if not isb:
                     print("Would you like to :")
@@ -368,6 +366,11 @@ class Farkle:
         if any(s <= 10000 for s in self.scores):
             solo_round(isBotGame)
 
+        self.done = True
+        self.winner = 0 if self.scores[0] > self.scores[1] else 1
+        if self.printify:
+            print(f"Game Score : {env.scores} ")
+            print(f"Player {self.winner} won :)")
         self.reset()
 
     def print_dice(self, dlist):
@@ -394,7 +397,7 @@ class Farkle:
                 print(msg)
 
 
-env = Farkle(printing=True)
+env = Farkle(printing=False)
 game_mode = input("Would you like to play ? (y/n)\n>")
 if game_mode == 'y':
     env.play_game()
