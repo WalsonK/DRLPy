@@ -2,7 +2,6 @@ import random
 import time
 from tqdm import tqdm
 from itertools import chain, combinations
-import numpy as np
 from collections import Counter
 
 
@@ -27,13 +26,16 @@ class Farkle:
         self.winning_score = winning_score
         self.scores = [0, 0]  # Scores des deux joueurs
         self.current_player = 0  # Indique quel joueur est en train de jouer (0 ou 1)
-        self.current_bank = []  # La banque du joueur
         self.current_turn_score = 0  # Score temporaire pour le tour en cours
-        self.dice_list = []
         self.switch_turn = False    # True to switch
         self.remaining_dice = 6  # Nombre de dés restants à lancer
         self.done = False  # Indique si la partie est terminée
         self.winner = None  # Indique le gagnant (0 ou 1)
+        self.dice_list = []
+        self.state_size = len(self.get_state())
+        self.dice_list = [1, 1, 1, 1, 1, 1]
+        self.actions_size = len(self.available_actions())
+        self.dice_list = []
         self.dice_art = {
             1: ("┌─────────┐",
                 "│         │",
@@ -301,7 +303,6 @@ class Farkle:
     def switch_player(self):
         self.current_player = 1 if self.current_player == 0 else 0
         self.remaining_dice = 6
-        self.current_bank = []
         self.current_turn_score = 0
         if self.printify:
             print(f"Game Score : {self.scores} ")
@@ -332,6 +333,7 @@ class Farkle:
                     if self.printify:
                         print("FARKLE !!!!")
                     self.switch_player()
+        return self.get_state(), self.get_reward(), self.done
 
     def bot_turn(self, botPlayer=1):
         av_actions = self.available_actions()
@@ -359,17 +361,17 @@ class Farkle:
                 self.bot_turn()
 
         if self.printify:
-            print(f"Game Score : {env.scores} ")
+            print(f"Game Score : {self.scores} ")
         self.roll_dice()
-        while all(s <= 10000 for s in self.scores):
+        while all(s <= self.winning_score for s in self.scores):
             solo_round(isBotGame)
-        if any(s <= 10000 for s in self.scores):
+        if any(s <= self.winning_score for s in self.scores):
             solo_round(isBotGame)
 
         self.done = True
         self.winner = 0 if self.scores[0] > self.scores[1] else 1
         if self.printify:
-            print(f"Game Score : {env.scores} ")
+            print(f"Game Score : {self.scores} ")
             print(f"Player {self.winner} won :)")
         self.reset()
 
@@ -397,7 +399,7 @@ class Farkle:
                 print(msg)
 
 
-env = Farkle(printing=False)
+"""env = Farkle(printing=True)
 game_mode = input("Would you like to play ? (y/n)\n>")
 if game_mode == 'y':
     env.play_game()
@@ -422,3 +424,4 @@ elif game_mode == 'n':
     print(f"\n{total} Game in 30 seconds")
     game_per_second = total / 30
     print(f"{game_per_second :.2f} Games/s")
+"""
