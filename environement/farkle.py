@@ -82,6 +82,7 @@ class Farkle:
         self.remaining_dice = 6
         self.done = False
         self.winner = None
+        return self.get_state()
 
     def get_state(self):
         dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
@@ -336,6 +337,8 @@ class Farkle:
         return self.get_state(), self.get_reward(), self.done
 
     def bot_turn(self, botPlayer=1):
+        if self.current_turn_score > 0 and self.printify:
+            print(f"Current turn score : {self.current_turn_score}")
         av_actions = self.available_actions()
         action_random = random.choice(list(av_actions.keys()))
         if self.printify:
