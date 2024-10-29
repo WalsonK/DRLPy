@@ -1,5 +1,8 @@
 import random
 import time
+from DQL.DQL import build_model, choose_action, remember, replay, update_epsilon
+
+import numpy as np
 from tqdm import tqdm
 from itertools import chain, combinations
 from collections import Counter
@@ -76,6 +79,7 @@ class Farkle:
         }
 
     def reset(self):
+        """Reset the game state and return the starting state."""
         self.scores = [0, 0]
         self.current_player = 0
         self.current_turn_score = 0
@@ -85,12 +89,14 @@ class Farkle:
         return self.get_state()
 
     def get_state(self):
+        """Get the current state of the game."""
         dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
-        return [self.current_player] + dice_list + [self.current_turn_score] + self.scores
+        return np.array([self.current_player] + dice_list + [self.current_turn_score] + self.scores)
 
     def get_reward(self):
+        """Get the current reward of the game."""
         if self.done:
-            if self.winner == self.current_player:
+            if self.winner == 0:
                 return 1  # Victoire du joueur actuel
             else:
                 return -1  # Défaite du joueur actuel
@@ -312,17 +318,20 @@ class Farkle:
 
     def step(self, dice_selected: list):
         if len(dice_selected) == 1:
+            # Action 0
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
             self.scores[self.current_player] += self.current_turn_score
             self.switch_player()
         else:
+            # Other Action
             selected_dice = [self.dice_list[i] for i, x in enumerate(dice_selected) if x == 1]
             score, _ = self.calculate_score(selected_dice)
             self.current_turn_score += score
             count_dice_used = dice_selected.count(1)
             self.remaining_dice -= count_dice_used
-            if self.remaining_dice == 0:  # Select all dices
+            if self.remaining_dice == 0:
+                # Select all dices
                 self.scores[self.current_player] += self.current_turn_score
                 self.switch_player()
             else:
@@ -334,6 +343,10 @@ class Farkle:
                     if self.printify:
                         print("FARKLE !!!!")
                     self.switch_player()
+        # Check if winner
+        if any(s >= self.winning_score for s in self.scores):
+            self.winner = 0 if self.scores[0] > self.scores[1] else 1
+            self.done = True
         return self.get_state(), self.get_reward(), self.done
 
     def bot_turn(self, botPlayer=1):
@@ -346,7 +359,7 @@ class Farkle:
             print(f"Player {self.current_player} choose action {action_random}")
         self.step(av_actions[action_random])
 
-    def play_game(self, isBotGame=False):
+    def play_game(self, isBotGame=False, show=False, agent=None):
         def solo_round(isb):
             if self.current_player == 0:
                 if self.current_turn_score > 0 and self.printify:
@@ -357,11 +370,25 @@ class Farkle:
                     if self.printify:
                         self.print_available_actions(av_actions)
                     choice = int(input("> "))
-                    self.step(av_actions[choice])
+                    print(self.step(av_actions[choice]))
                 else:
                     self.bot_turn(botPlayer=0)
             else:
-                self.bot_turn()
+                if agent is None:
+                    self.bot_turn()
+                else:
+                    if self.current_turn_score > 0 and self.printify:
+                        print(f"Current turn score : {self.current_turn_score}")
+                    av_actions = self.available_actions()
+                    keys = list(av_actions.keys())
+                    action = choose_action(self.get_state(), agent, 0, keys)
+                    if self.printify:
+                        self.print_available_actions(av_actions)
+                        print(f"Dqn chose action: {action}")
+                    self.step(av_actions[action])
+
+        if show:
+            self.printify = True
 
         if self.printify:
             print(f"Game Score : {self.scores} ")
@@ -402,7 +429,7 @@ class Farkle:
                 print(msg)
 
 
-"""env = Farkle(printing=True)
+"""env = Farkle(printing=False)
 game_mode = input("Would you like to play ? (y/n)\n>")
 if game_mode == 'y':
     env.play_game()

@@ -9,6 +9,7 @@ from environement.farkle import Farkle
 
 # Game selection logic
 def select_game(name):
+    """Set the environment from the user input"""
     if name == "tictactoe":
         env = TicTacToe()
         s_size = 9
@@ -22,7 +23,7 @@ def select_game(name):
         s_size = 5
         a_size = 2  # Move left or right
     elif name == "farkle":
-        env = Farkle()
+        env = Farkle(printing=False)
         s_size = env.state_size
         a_size = env.actions_size
     else:
@@ -92,7 +93,7 @@ def simulate_game(game, model, epsilon=0.0, manual=False):
                             print("Agent DQN loses!")
                     break
         else:
-            game.play_game()
+            game.play_game(show=True, agent=model)
 
         replay_choice = input("Do you want to play again? (y/n): ").strip().lower()
         replay_game = True if replay_choice == "y" else False
@@ -114,7 +115,8 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_dqn(env, model, state_size, action_size, episodes=100, opponent="random", max_steps=30):
+def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random", max_steps=500):
+    win_game = 0
     epsilon = 0.8
     model_opponent = None
     if opponent == "model":
@@ -126,34 +128,63 @@ def train_dqn(env, model, state_size, action_size, episodes=100, opponent="rando
         done = False
         step_count = 0
 
-        while not done and step_count < max_steps:
-            available_actions = env.available_actions()
-
-            if (
-                hasattr(env, "current_player") and env.current_player == 0
-            ):  # DQN model plays
-                action = choose_action(state, model, epsilon, available_actions)
-            else:
-                if opponent == "random":
-                    action = random_player(env)
+        if isinstance(env, Farkle):
+            env.roll_dice()
+            while not done and step_count < max_steps and all(s <= env.winning_score for s in env.scores):
+                available_actions = env.available_actions()
+                keys = list(available_actions.keys())
+                # DQN model plays
+                if hasattr(env, "current_player") and env.current_player == 0:
+                    # print(f"DQN's turn. step count: {step_count}")
+                    # env.print_available_actions(available_actions)
+                    action = choose_action(state, model, epsilon, keys)
+                    # print(f"Dqn chose action: {action}")
+                    step_count += 1
                 else:
-                    action = choose_action(
-                        state, model_opponent, epsilon, available_actions
-                    )
+                    if opponent == "random":
+                        action = random.choice(keys)
+                    else:
+                        action = choose_action(state, model_opponent, epsilon, keys)
 
-            next_state, reward, done = env.step(action)
-            remember(state, action, reward, next_state, done)
-            state = next_state
-            total_reward += reward
-            step_count += 1
+                next_state, reward, done = env.step(available_actions[action])
+                remember(state, action, reward, next_state, done)
+                state = next_state
+                total_reward += reward
 
-            if done:
-                print(
-                    f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}"
-                )
-                break
+                if any(s >= env.winning_score for s in env.scores):
+                    if env.scores[0] > env.scores[1]:
+                        win_game += 1
 
-        if not done:
+                if env.done:
+                    print(f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}")
+                    break
+        else:
+            while not done and step_count < max_steps:
+                available_actions = env.available_actions()
+
+                if (
+                    hasattr(env, "current_player") and env.current_player == 0
+                ):  # DQN model plays
+                    action = choose_action(state, model, epsilon, available_actions)
+                else:
+                    if opponent == "random":
+                        action = random_player(env)
+                    else:
+                        action = choose_action(
+                            state, model_opponent, epsilon, available_actions
+                        )
+
+                next_state, reward, done = env.step(action)
+                remember(state, action, reward, next_state, done)
+                state = next_state
+                total_reward += reward
+                step_count += 1
+
+                if done:
+                    print(f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}")
+                    break
+
+        if not done and step_count >= max_steps:
             print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
         replay(model, action_size)  # Replay and update DQN model
@@ -161,41 +192,30 @@ def train_dqn(env, model, state_size, action_size, episodes=100, opponent="rando
             replay(model_opponent, action_size)
 
         epsilon = update_epsilon(epsilon)
+    print(f"Winrate: {win_game} / {episodes} = {win_game / episodes}")
 
 
 if __name__ == "__main__":
-    game_name = (
-        input(
-            "Enter the game you want to play (tictactoe/gridworld/farkle/lineworld): "
-        )
-        .strip()
-        .lower()
-    )
-    game, states, actions = select_game(game_name)
+    game_name = input("Enter the game you want to play (tictactoe/gridworld/farkle/lineworld): ").strip().lower()
+    game, states_size, actions_size = select_game(game_name)
 
     if game_name == "tictactoe":
-        opponent_type = (
-            input(
-                "Do you want to train model vs random or model vs model? (random/model): "
-            )
-            .strip()
-            .lower()
-        )
+        opponent_type = input("Do you want to train model vs random or model vs model? (random/model): ").strip().lower()
         assert opponent_type in ["random", "model"], "Invalid opponent type selected."
 
-    mode = input("Do you want to play manually? (y/n): ").strip().lower()
-    manual = True if mode == "y" else False
+    mode = input("Do you want to play or train? (play/train): ").strip().lower()
+    manual = True if mode == "play" else False
 
     if game_name in ["lineworld", "gridworld", "farkle"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
         simulate_game(game, model=None, manual=True)
     else:
-        agent = build_model(states, actions)
+        agent = build_model(states_size, actions_size)
 
         if game_name == "tictactoe":
-            train_dqn(game, agent, states, actions, opponent=opponent_type)
+            train_dqn(game, agent, states_size, actions_size, opponent=opponent_type)
         else:
-            train_dqn(game, agent, states, actions)
+            train_dqn(game, agent, states_size, actions_size)
 
         print("\n--- Simulating a game after training ---")
         simulate_game(game, agent, manual=manual)
