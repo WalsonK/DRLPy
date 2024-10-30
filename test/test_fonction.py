@@ -1,11 +1,11 @@
 import unittest
-from environement.tools import *
 
+from environement.tools import *
 
 # On doit importer les fonctions du fichier du jeu que tu as créé, mais je vais les définir ici pour que les tests fonctionnent
 
-class TestFarkleScoring(unittest.TestCase):
 
+class TestFarkleScoring(unittest.TestCase):
     def test_check_straight(self):
         # Cas où c'est une suite
         self.assertTrue(check_straight([1, 2, 3, 4, 5, 6]))
@@ -36,8 +36,12 @@ class TestFarkleScoring(unittest.TestCase):
         self.assertEqual(check_multiples([4, 4, 4, 4, 4]), (1600, [4, 4, 4, 4, 4]))
 
         # Cas pour 6 dés identiques (multiplie par 8)
-        self.assertEqual(check_multiples([1, 1, 1, 1, 1, 1]), (8000, [1, 1, 1, 1, 1, 1]))
-        self.assertEqual(check_multiples([2, 2, 2, 2, 2, 2]), (1600, [2, 2, 2, 2, 2, 2]))
+        self.assertEqual(
+            check_multiples([1, 1, 1, 1, 1, 1]), (8000, [1, 1, 1, 1, 1, 1])
+        )
+        self.assertEqual(
+            check_multiples([2, 2, 2, 2, 2, 2]), (1600, [2, 2, 2, 2, 2, 2])
+        )
 
     def test_check_individual_scores(self):
         # Cas pour des 1 non multiples
@@ -73,5 +77,5 @@ class TestFarkleScoring(unittest.TestCase):
         self.assertEqual(calculate_score([2, 2, 2, 2, 2, 2]), 1600)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

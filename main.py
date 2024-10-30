@@ -1,11 +1,12 @@
 import random
+
 from tqdm import tqdm
 
-from DQL.DQL import build_model, choose_action, remember, replay, update_epsilon
+from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from environement.tictactoe import TicTacToe
-from environement.farkle import Farkle
+from models import DQN_with_replay
 
 
 # Game selection logic
@@ -38,7 +39,7 @@ def random_player(env):
     return random.choice(available_actions)
 
 
-def simulate_game(game, model, epsilon=0.0, manual=False):
+def simulate_game(game, model=None, manual=False):
     replay_game = True
     while replay_game:
         state = game.reset()
@@ -46,58 +47,71 @@ def simulate_game(game, model, epsilon=0.0, manual=False):
         if not isinstance(game, Farkle):
             game.render()
             print()
-            while not game.done:
-                # Manually playing LineWorld/GridWorld
-                if manual and isinstance(game, (LineWorld, GridWorld)):
-                    print("Your turn (Player).")
-                    available_actions = game.available_actions()
-                    action = manual_player(available_actions)
-                else:
-                    if (
-                        hasattr(game, "current_player") and game.current_player == 1
-                    ):  # DQN agent plays (Player 1)
-                        print("Agent DQN's turn.")
-                        available_actions = game.available_actions()
-                        action = choose_action(state, model, epsilon, available_actions)
-                    else:
-                        if hasattr(game, "current_player"):
-                            if (
-                                manual and game.current_player == -1
-                            ):  # User plays (Player 2)
-                                print("Your turn (Player).")
-                                available_actions = game.available_actions()
-                                action = manual_player(available_actions)
-                            else:
-                                print("Random player's turn.")
-                                action = random_player(game)
-                        else:
-                            available_actions = game.available_actions()
-                            action = choose_action(state, model, epsilon, available_actions)
 
+            while not game.done:
+                if hasattr(game, "current_player") and game.current_player == 1:
+                    if isinstance(model, DQN_with_replay) and not manual:
+                        # Model vs Random (model is agent, user not playing)
+                        print("Agent model's turn.")
+                        available_actions = game.available_actions()
+                        action = model.choose_action(state, available_actions)
+                    elif model is None:
+                        # User vs Random (opponent is random)
+                        print("Random opponent's turn.")
+                        available_actions = game.available_actions()
+                        action = random.choice(available_actions)
+                    else:
+                        # User vs Model (agent's turn)
+                        print("Agent model's turn.")
+                        available_actions = game.available_actions()
+                        action = model.choose_action(state, available_actions)
+                else:
+                    if manual:
+                        # User's manual turn
+                        print("Your turn (Player).")
+                        available_actions = game.available_actions()
+                        action = manual_player(available_actions)
+                    else:
+                        # Random opponent's turn in Model vs Random
+                        print("Random opponent's turn.")
+                        available_actions = game.available_actions()
+                        action = random.choice(available_actions)
+
+                # Execute action and update game state
                 next_state, reward, done = game.step(action)
                 state = next_state
                 game.render()
                 print()
 
+                # End-of-game conditions and outcome
                 if done:
                     if hasattr(game, "winner"):
                         if game.winner == 1:
-                            print("Agent DQN wins!")
+                            print(
+                                "Agent model wins!"
+                                if model
+                                else "Random opponent wins!"
+                            )
                         elif game.winner == -1:
-                            print("You win!" if manual else "Random player wins!")
+                            print("You win!" if manual else "Random opponent wins!")
                         else:
                             print("It's a draw!")
                     else:
                         if reward == 1.0:
-                            print("Agent DQN wins!")
+                            print(
+                                "Agent model wins!"
+                                if model
+                                else "Random opponent wins!"
+                            )
                         elif reward == -1.0:
-                            print("Agent DQN loses!")
+                            print("You win!" if manual else "Agent model loses!")
                     break
         else:
             game.play_game(show=True, agent=model)
 
+        # Replay prompt
         replay_choice = input("Do you want to play again? (y/n): ").strip().lower()
-        replay_game = True if replay_choice == "y" else False
+        replay_game = replay_choice == "y"
 
 
 def manual_player(available_actions):
@@ -116,91 +130,30 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random", max_steps=200):
-    win_game = 0
-    epsilon = 0.8
-    model_opponent = None
-    if opponent == "model":
-        model_opponent = build_model(state_size, action_size)
-
-    for e in range(episodes):
-        state = env.reset()
-        total_reward = 0
-        done = False
-        step_count = 0
-
-        pbar = tqdm(total=max_steps, desc=f"Episode {e + 1}/{episodes}")
-
-        if isinstance(env, Farkle):
-            env.roll_dice()
-        while not env.done and step_count < max_steps:
-            available_actions = env.available_actions()
-            keys = []
-            if isinstance(env, Farkle):
-                keys = list(available_actions.keys())
-
-            if hasattr(env, "current_player") and env.current_player == 1:
-                action = (choose_action(state, model, epsilon, keys)
-                          if isinstance(env, Farkle)
-                          else choose_action(state, model, epsilon, available_actions))
-                step_count += 1
-                pbar.update(1)
-            else:
-                if opponent == "random":
-                    action = (random.choice(keys) if isinstance(env, Farkle)
-                              else random_player(env))
-                else:
-                    action = (choose_action(state, model_opponent, epsilon, keys) if isinstance(env, Farkle)
-                              else choose_action(state, model_opponent, epsilon, available_actions))
-
-            next_state, reward, done = (env.step(available_actions[action]) if isinstance(env, Farkle)
-                                        else env.step(action))
-            remember(state, action, reward, next_state, done)
-            state = next_state
-            total_reward += reward
-
-            if isinstance(env, Farkle):
-                if any(s >= env.winning_score for s in env.scores):
-                    if env.scores[0] > env.scores[1]:
-                        win_game += 1
-            if env.done:
-                print(
-                    f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}", flush=True)
-                pbar.close()
-                break
-
-        if not done and step_count >= max_steps:
-            print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-
-        replay(model, action_size)  # Replay and update DQN model
-        if opponent == "model":
-            replay(model_opponent, action_size)
-
-        epsilon = update_epsilon(epsilon)
-    print(f"Winrate: {win_game} / {episodes} = {win_game / episodes}")
-
-
 if __name__ == "__main__":
-    game_name = input("Enter the game you want to play (tictactoe/gridworld/farkle/lineworld): ").strip().lower()
-    game, states_size, actions_size = select_game(game_name)
-
-    if game_name == "tictactoe":
-        opponent_type = input("Do you want to train model vs random or model vs model? (random/model): ").strip().lower()
-        assert opponent_type in ["random", "model"], "Invalid opponent type selected."
+    game_name = (
+        input(
+            "Enter the game you want to play (tictactoe/gridworld/farkle/lineworld): "
+        )
+        .strip()
+        .lower()
+    )
+    game, state_size, action_size = select_game(game_name)
 
     mode = input("Do you want to play or train? (play/train): ").strip().lower()
     manual = True if mode == "play" else False
 
-    if game_name in ["lineworld", "gridworld", "farkle"] and manual:
+    agent = DQN_with_replay.DQN_with_replay(state_size, action_size)
+
+    if game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
         simulate_game(game, model=None, manual=True)
     else:
-        agent = build_model(states_size, actions_size)
-
-        if game_name == "tictactoe":
-            train_dqn(game, agent, states_size, actions_size, opponent=opponent_type)
+        if mode == "train":
+            agent.train(game, episodes=5)
+            print("\n--- Simulating a game after training ---")
+            simulate_game(
+                game, model=agent, manual=manual
+            )  # Pass `agent`, not `agent.model`
         else:
-            train_dqn(game, agent, states_size, actions_size)
-
-        print("\n--- Simulating a game after training ---")
-        simulate_game(game, agent, manual=manual)
+            print("Play mode is not supported for automated DQN training.")

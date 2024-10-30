@@ -1,11 +1,10 @@
 import random
 import time
-from DQL.DQL import build_model, choose_action, remember, replay, update_epsilon
+from collections import Counter
+from itertools import chain, combinations
 
 import numpy as np
 from tqdm import tqdm
-from itertools import chain, combinations
-from collections import Counter
 
 
 def convert_input_list(array):
@@ -30,7 +29,7 @@ class Farkle:
         self.scores = [0, 0]  # Scores des deux joueurs
         self.current_player = 1  # Indique quel joueur est en train de jouer (1 ou 2)
         self.current_turn_score = 0  # Score temporaire pour le tour en cours
-        self.switch_turn = False    # True to switch
+        self.switch_turn = False  # True to switch
         self.remaining_dice = 6  # Nombre de dés restants à lancer
         self.done = False  # Indique si la partie est terminée
         self.winner = None  # Indique le gagnant (0 ou 1)
@@ -40,42 +39,48 @@ class Farkle:
         self.actions_size = len(self.available_actions())
         self.dice_list = []
         self.dice_art = {
-            1: ("┌─────────┐",
+            1: (
+                "┌─────────┐",
                 "│         │",
                 "│    ●    │",
                 "│         │",
                 "└─────────┘",
-                ),
-            2: ("┌─────────┐",
+            ),
+            2: (
+                "┌─────────┐",
                 "│  ●      │",
                 "│         │",
                 "│      ●  │",
                 "└─────────┘",
-                ),
-            3: ("┌─────────┐",
+            ),
+            3: (
+                "┌─────────┐",
                 "│  ●      │",
                 "│    ●    │",
                 "│      ●  │",
                 "└─────────┘",
-                ),
-            4: ("┌─────────┐",
+            ),
+            4: (
+                "┌─────────┐",
                 "│  ●   ●  │",
                 "│         │",
                 "│  ●   ●  │",
                 "└─────────┘",
-                ),
-            5: ("┌─────────┐",
+            ),
+            5: (
+                "┌─────────┐",
                 "│  ●   ●  │",
                 "│    ●    │",
                 "│  ●   ●  │",
                 "└─────────┘",
-                ),
-            6: ("┌─────────┐",
+            ),
+            6: (
+                "┌─────────┐",
                 "│  ●   ●  │",
                 "│  ●   ●  │",
                 "│  ●   ●  │",
                 "└─────────┘",
-                )
+            ),
         }
 
     def reset(self):
@@ -91,7 +96,9 @@ class Farkle:
     def get_state(self):
         """Get the current state of the game."""
         dice_list = self.dice_list[:6] + [0] * (6 - len(self.dice_list))
-        return np.array([self.current_player] + dice_list + [self.current_turn_score] + self.scores)
+        return np.array(
+            [self.current_player] + dice_list + [self.current_turn_score] + self.scores
+        )
 
     def get_reward(self):
         """Get the current reward of the game."""
@@ -124,7 +131,10 @@ class Farkle:
         self.dice_list = [random.randint(1, 6) for _ in range(self.remaining_dice)]
         if self.printify:
             self.print_dice(self.dice_list)
-        if self.remaining_dice == 6 and (self.check_straight(self.dice_list) or self.check_three_pairs(self.dice_list)):
+        if self.remaining_dice == 6 and (
+            self.check_straight(self.dice_list)
+            or self.check_three_pairs(self.dice_list)
+        ):
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
             if self.printify:
@@ -149,7 +159,9 @@ class Farkle:
 
         # Check for specific combinations
         if self.check_straight(dices):
-            return 1500, [0] * len(dices)  # A straight gives the maximum score immediately
+            return 1500, [0] * len(
+                dices
+            )  # A straight gives the maximum score immediately
 
         if self.check_three_pairs(dices):
             return 1000, [0] * len(dices)  # Three pairs give a score of 1000
@@ -218,7 +230,9 @@ class Farkle:
 
         for num, count in counts.items():
             if count >= 3:
-                base_score = 1000 if num == 1 else num * 100  # 1000 for three 1s, otherwise num * 100
+                base_score = (
+                    1000 if num == 1 else num * 100
+                )  # 1000 for three 1s, otherwise num * 100
 
                 score += base_score
 
@@ -239,7 +253,7 @@ class Farkle:
 
         return score, used_dice, binary_used_dice
 
-    def check_six_no_scoring_dice(self ,dice: list) -> bool:
+    def check_six_no_scoring_dice(self, dice: list) -> bool:
         """
         Check if none of the six dice result in any scoring combinations.
 
@@ -321,18 +335,20 @@ class Farkle:
             # Action 0
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
-            self.scores[self.current_player-1] += self.current_turn_score
+            self.scores[self.current_player - 1] += self.current_turn_score
             self.switch_player()
         else:
             # Other Action
-            selected_dice = [self.dice_list[i] for i, x in enumerate(dice_selected) if x == 1]
+            selected_dice = [
+                self.dice_list[i] for i, x in enumerate(dice_selected) if x == 1
+            ]
             score, _ = self.calculate_score(selected_dice)
             self.current_turn_score += score
             count_dice_used = dice_selected.count(1)
             self.remaining_dice -= count_dice_used
             if self.remaining_dice == 0:
                 # Select all dices
-                self.scores[self.current_player-1] += self.current_turn_score
+                self.scores[self.current_player - 1] += self.current_turn_score
                 self.switch_player()
             else:
                 self.roll_dice()
@@ -381,7 +397,7 @@ class Farkle:
                         print(f"Current turn score : {self.current_turn_score}")
                     av_actions = self.available_actions()
                     keys = list(av_actions.keys())
-                    action = choose_action(self.get_state(), agent, 0, keys)
+                    action = agent.choose_action(self.get_state(), keys)
                     if self.printify:
                         self.print_available_actions(av_actions)
                         print(f"Dqn chose action: {action}")
@@ -418,9 +434,13 @@ class Farkle:
             human_indice = [i + 1 for i, x in enumerate(vector) if x == 1]
             if human_indice:
                 if len(human_indice) > 1:
-                    print(f"{action} : Select les dés {human_indice} et relancer les autres")
+                    print(
+                        f"{action} : Select les dés {human_indice} et relancer les autres"
+                    )
                 else:
-                    print(f"{action} : Select le {human_indice} dé et relancer les autres")
+                    print(
+                        f"{action} : Select le {human_indice} dé et relancer les autres"
+                    )
             else:
                 msg = f"{action} : Bank {vector[0]}"
                 if self.current_turn_score > 0:

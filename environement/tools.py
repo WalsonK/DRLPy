@@ -99,7 +99,9 @@ def check_multiples(dice: list) -> tuple:
 
     for num, count in counts.items():
         if count >= 3:
-            base_score = 1000 if num == 1 else num * 100  # 1000 for three 1s, otherwise num * 100
+            base_score = (
+                1000 if num == 1 else num * 100
+            )  # 1000 for three 1s, otherwise num * 100
 
             score += base_score
 
@@ -119,6 +121,7 @@ def check_multiples(dice: list) -> tuple:
                     used_count += 1
 
     return score, used_dice, binary_used_dice
+
 
 def check_six_no_scoring_dice(dice: list) -> int:
     """
@@ -176,7 +179,7 @@ def check_individual_scores(dice: list, used_dice: list) -> (int, list):
     binary_used_dice = [0] * len(dice)
 
     score += remaining_counts[1] * 100  # Each remaining 1 is worth 100 points
-    score += remaining_counts[5] * 50   # Each remaining 5 is worth 50 points
+    score += remaining_counts[5] * 50  # Each remaining 5 is worth 50 points
 
     used_count_1s = 0
     used_count_5s = 0
