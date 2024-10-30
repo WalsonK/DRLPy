@@ -63,14 +63,9 @@ class DQN_with_replay:
         for i, (state, action, reward, next_state, done) in enumerate(minibatch):
             target = reward
             if not done:
-                target += self.gamma * np.amax(
-                    next_q_values[i]
-                )  # Utilise next_q_values pré-calculé
-            q_values[i][action] = (
-                target  # Mettre à jour l'action cible avec le nouveau calcul
-            )
+                target += self.gamma * np.amax(next_q_values[i])
+            q_values[i][action] = target
 
-        # Mise à jour du modèle avec un seul appel fit sur tout le batch
         self.model.fit(states, q_values, epochs=1, verbose=0)
 
     def update_epsilon(self):
@@ -136,7 +131,7 @@ class DQN_with_replay:
             if not done and step_count >= max_steps:
                 print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
-            self.replay()  # Replay and update DQN model
+            self.replay()
 
             self.update_epsilon()
         print(f"Winrate: {win_game} / {episodes} = {win_game / episodes}")

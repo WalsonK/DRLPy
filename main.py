@@ -77,13 +77,11 @@ def simulate_game(game, model=None, manual=False):
                         available_actions = game.available_actions()
                         action = random.choice(available_actions)
 
-                # Execute action and update game state
                 next_state, reward, done = game.step(action)
                 state = next_state
                 game.render()
                 print()
 
-                # End-of-game conditions and outcome
                 if done:
                     if hasattr(game, "winner"):
                         if game.winner == 1:
@@ -152,8 +150,6 @@ if __name__ == "__main__":
         if mode == "train":
             agent.train(game, episodes=5)
             print("\n--- Simulating a game after training ---")
-            simulate_game(
-                game, model=agent, manual=manual
-            )  # Pass `agent`, not `agent.model`
+            simulate_game(game, model=agent, manual=manual)
         else:
             print("Play mode is not supported for automated DQN training.")
