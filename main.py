@@ -130,59 +130,38 @@ def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random"
 
         if isinstance(env, Farkle):
             env.roll_dice()
-            while not done and step_count < max_steps and all(s <= env.winning_score for s in env.scores):
-                available_actions = env.available_actions()
+        while not env.done and step_count < max_steps:
+            available_actions = env.available_actions()
+            keys = []
+            if isinstance(env, Farkle):
                 keys = list(available_actions.keys())
-                # DQN model plays
-                if hasattr(env, "current_player") and env.current_player == 0:
-                    # print(f"DQN's turn. step count: {step_count}")
-                    # env.print_available_actions(available_actions)
-                    action = choose_action(state, model, epsilon, keys)
-                    # print(f"Dqn chose action: {action}")
-                    step_count += 1
+
+            if hasattr(env, "current_player") and env.current_player == 1:
+                action = (choose_action(state, model, epsilon, keys)
+                          if isinstance(env, Farkle)
+                          else choose_action(state, model, epsilon, available_actions))
+                step_count += 1
+            else:
+                if opponent == "random":
+                    action = (random.choice(keys) if isinstance(env, Farkle)
+                              else random_player(env))
                 else:
-                    if opponent == "random":
-                        action = random.choice(keys)
-                    else:
-                        action = choose_action(state, model_opponent, epsilon, keys)
+                    action = (choose_action(state, model_opponent, epsilon, keys) if isinstance(env, Farkle)
+                              else choose_action(state, model_opponent, epsilon, available_actions))
 
-                next_state, reward, done = env.step(available_actions[action])
-                remember(state, action, reward, next_state, done)
-                state = next_state
-                total_reward += reward
+            next_state, reward, done = (env.step(available_actions[action]) if isinstance(env, Farkle)
+                                        else env.step(action))
+            remember(state, action, reward, next_state, done)
+            state = next_state
+            total_reward += reward
 
+            if isinstance(env, Farkle):
                 if any(s >= env.winning_score for s in env.scores):
                     if env.scores[0] > env.scores[1]:
                         win_game += 1
-
-                if env.done:
-                    print(f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}")
-                    break
-        else:
-            while not done and step_count < max_steps:
-                available_actions = env.available_actions()
-
-                if (
-                    hasattr(env, "current_player") and env.current_player == 0
-                ):  # DQN model plays
-                    action = choose_action(state, model, epsilon, available_actions)
-                else:
-                    if opponent == "random":
-                        action = random_player(env)
-                    else:
-                        action = choose_action(
-                            state, model_opponent, epsilon, available_actions
-                        )
-
-                next_state, reward, done = env.step(action)
-                remember(state, action, reward, next_state, done)
-                state = next_state
-                total_reward += reward
-                step_count += 1
-
-                if done:
-                    print(f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}")
-                    break
+            if env.done:
+                print(f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}")
+                break
 
         if not done and step_count >= max_steps:
             print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")

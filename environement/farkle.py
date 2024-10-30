@@ -28,7 +28,7 @@ class Farkle:
         self.printify = printing
         self.winning_score = winning_score
         self.scores = [0, 0]  # Scores des deux joueurs
-        self.current_player = 0  # Indique quel joueur est en train de jouer (0 ou 1)
+        self.current_player = 1  # Indique quel joueur est en train de jouer (1 ou 2)
         self.current_turn_score = 0  # Score temporaire pour le tour en cours
         self.switch_turn = False    # True to switch
         self.remaining_dice = 6  # Nombre de dés restants à lancer
@@ -81,7 +81,7 @@ class Farkle:
     def reset(self):
         """Reset the game state and return the starting state."""
         self.scores = [0, 0]
-        self.current_player = 0
+        self.current_player = 1
         self.current_turn_score = 0
         self.remaining_dice = 6
         self.done = False
@@ -308,7 +308,7 @@ class Farkle:
         return score, binary_used_dice
 
     def switch_player(self):
-        self.current_player = 1 if self.current_player == 0 else 0
+        self.current_player = 2 if self.current_player == 1 else 1
         self.remaining_dice = 6
         self.current_turn_score = 0
         if self.printify:
@@ -321,7 +321,7 @@ class Farkle:
             # Action 0
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
-            self.scores[self.current_player] += self.current_turn_score
+            self.scores[self.current_player-1] += self.current_turn_score
             self.switch_player()
         else:
             # Other Action
@@ -332,7 +332,7 @@ class Farkle:
             self.remaining_dice -= count_dice_used
             if self.remaining_dice == 0:
                 # Select all dices
-                self.scores[self.current_player] += self.current_turn_score
+                self.scores[self.current_player-1] += self.current_turn_score
                 self.switch_player()
             else:
                 self.roll_dice()
@@ -361,7 +361,7 @@ class Farkle:
 
     def play_game(self, isBotGame=False, show=False, agent=None):
         def solo_round(isb):
-            if self.current_player == 0:
+            if self.current_player == 1:
                 if self.current_turn_score > 0 and self.printify:
                     print(f"Current turn score : {self.current_turn_score}")
                 if not isb:
