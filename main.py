@@ -1,4 +1,5 @@
 import random
+from tqdm import tqdm
 
 from DQL.DQL import build_model, choose_action, remember, replay, update_epsilon
 from environement.gridworld import GridWorld
@@ -115,7 +116,7 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random", max_steps=500):
+def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random", max_steps=200):
     win_game = 0
     epsilon = 0.8
     model_opponent = None
@@ -127,6 +128,8 @@ def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random"
         total_reward = 0
         done = False
         step_count = 0
+
+        pbar = tqdm(total=max_steps, desc=f"Episode {e + 1}/{episodes}")
 
         if isinstance(env, Farkle):
             env.roll_dice()
@@ -141,6 +144,7 @@ def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random"
                           if isinstance(env, Farkle)
                           else choose_action(state, model, epsilon, available_actions))
                 step_count += 1
+                pbar.update(1)
             else:
                 if opponent == "random":
                     action = (random.choice(keys) if isinstance(env, Farkle)
@@ -160,7 +164,9 @@ def train_dqn(env, model, state_size, action_size, episodes=5, opponent="random"
                     if env.scores[0] > env.scores[1]:
                         win_game += 1
             if env.done:
-                print(f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}")
+                print(
+                    f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {epsilon:.4f}, Steps: {step_count}", flush=True)
+                pbar.close()
                 break
 
         if not done and step_count >= max_steps:

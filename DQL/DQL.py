@@ -43,8 +43,8 @@ def replay(model, action_size):
     for state, action, reward, next_state, done in minibatch:
         target = reward
         if not done:
-            target += gamma * np.amax(model.predict(next_state.reshape(1, -1)))
-        target_f = model.predict(state.reshape(1, -1))
+            target += gamma * np.amax(model.predict(next_state.reshape(1, -1), verbose=0))
+        target_f = model.predict(state.reshape(1, -1), verbose=0)
         target_f[0][action] = target
         model.fit(state.reshape(1, -1), target_f, epochs=1, verbose=0)
 
@@ -52,7 +52,7 @@ def replay(model, action_size):
 def choose_action(state, model, epsilon, available_actions):
     if np.random.rand() <= epsilon:
         return random.choice(available_actions)
-    q_values = model.predict(state.reshape(1, -1))
+    q_values = model.predict(state.reshape(1, -1), verbose=0)
     valid_q_values = np.full(
         len(q_values[0]), -np.inf
     )  # Initialiser toutes les valeurs à -inf
