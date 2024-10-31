@@ -50,7 +50,7 @@ def simulate_game(game, model=None, manual=False):
 
             while not game.done:
                 if hasattr(game, "current_player") and game.current_player == 1:
-                    if isinstance(model, DQN_with_replay) and not manual:
+                    if isinstance(model, DQN_with_replay.DQN_with_replay) and not manual:
                         # Model vs Random (model is agent, user not playing)
                         print("Agent model's turn.")
                         available_actions = game.available_actions()

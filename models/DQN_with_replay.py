@@ -150,32 +150,19 @@ class DQN_with_replay:
             else:
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
-                    keys = (
-                        list(available_actions.keys())
-                        if isinstance(env, Farkle)
-                        else available_actions
-                    )
 
                     if hasattr(env, "current_player") and env.current_player == 1:
-                        action = self.choose_action(state, keys)
+                        action = self.choose_action(state, available_actions)
                         step_count += 1
                     else:
-                        action = self.choose_action(state, keys)
+                        action = random.choice(available_actions)
 
-                    next_state, _, done = (
-                        env.step(available_actions[action])
-                        if isinstance(env, Farkle)
-                        else env.step(action)
-                    )
-
+                    next_state, _, done = env.step(action)
                     state = next_state
 
-                    if isinstance(env, Farkle) and any(
-                            s >= env.winning_score for s in env.scores
-                    ):
-                        if env.scores[0] > env.scores[1]:
-                            win_game += 1
                     if env.done:
+                        if env.winner == 1:
+                            win_game += 1
                         break
 
                 if not done and step_count >= max_steps:
