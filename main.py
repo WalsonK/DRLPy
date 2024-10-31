@@ -105,7 +105,7 @@ def simulate_game(game, model=None, manual=False):
                             print("You win!" if manual else "Agent model loses!")
                     break
         else:
-            game.play_game(show=True, agent=model)
+            game.play_game(show=True, agentOpponent=model)
 
         # Replay prompt
         replay_choice = input("Do you want to play again? (y/n): ").strip().lower()
@@ -148,7 +148,11 @@ if __name__ == "__main__":
         simulate_game(game, model=None, manual=True)
     else:
         if mode == "train":
-            agent.train(game, episodes=5)
+            # Train
+            score = agent.train(game, episodes=5)
+            print(f"Trained Mean score: {score}")
+            # Test
+            agent.test(game, episodes=10)
             print("\n--- Simulating a game after training ---")
             simulate_game(game, model=agent, manual=manual)
         else:

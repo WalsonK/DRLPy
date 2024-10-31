@@ -1,14 +1,14 @@
-import random
 from collections import deque
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from environement.farkle import Farkle
 from tools import *
+import time
 
 
 class DQN_with_replay:
@@ -74,16 +74,16 @@ class DQN_with_replay:
     def choose_action(self, state, available_actions):
         if np.random.rand() <= self.epsilon:
             return random.choice(available_actions)
-        q_values = self.model.predict(state.reshape(1, -1))
+        q_values = self.model.predict(state.reshape(1, -1), verbose=0)
         valid_q_values = np.full(len(q_values[0]), -np.inf)
         for action in available_actions:
             valid_q_values[action] = q_values[0][action]
         return np.argmax(valid_q_values)
 
     def train(self, env, episodes=200, max_steps=500):
-        win_game = 0
-
+        scores_list = []
         for e in range(episodes):
+            agent_action_times = []
             state = env.reset()
             total_reward = 0
             done = False
@@ -102,12 +102,15 @@ class DQN_with_replay:
                 )
 
                 if hasattr(env, "current_player") and env.current_player == 1:
+                    start_time = time.time()
                     action = self.choose_action(state, keys)
+                    end_time = time.time()
+                    agent_action_times.append(end_time - start_time)
                     step_count += 1
-                    pbar.update(1)
                 else:
-                    action = self.choose_action(state, keys)
+                    action = random.choice(keys)
 
+                pbar.update(1)
                 next_state, reward, done = (
                     env.step(available_actions[action])
                     if isinstance(env, Farkle)
@@ -117,14 +120,11 @@ class DQN_with_replay:
                 state = next_state
                 total_reward += reward
 
-                if isinstance(env, Farkle) and any(
-                    s >= env.winning_score for s in env.scores
-                ):
-                    if env.scores[0] > env.scores[1]:
-                        win_game += 1
                 if env.done:
+                    scores_list.append(total_reward)
                     print(
-                        f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {self.epsilon:.4f}, Steps: {step_count}"
+                        f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {self.epsilon:.4f}, "
+                        f"Agent steps: {step_count}, Average Action Time: {np.mean(agent_action_times)}"
                     )
                     break
 
@@ -134,4 +134,51 @@ class DQN_with_replay:
             self.replay()
 
             self.update_epsilon()
-        print(f"Winrate: {win_game} / {episodes} = {win_game / episodes}")
+        return np.mean(scores_list)
+
+    def test(self, env, episodes=200, max_steps=500):
+        win_game = 0
+        for e in trange(episodes, desc=f"Test"):
+            state = env.reset()
+            done = False
+            step_count = 0
+
+            if isinstance(env, Farkle):
+                winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                if winner == 0:
+                    win_game += 1
+            else:
+                while not env.done and step_count < max_steps:
+                    available_actions = env.available_actions()
+                    keys = (
+                        list(available_actions.keys())
+                        if isinstance(env, Farkle)
+                        else available_actions
+                    )
+
+                    if hasattr(env, "current_player") and env.current_player == 1:
+                        action = self.choose_action(state, keys)
+                        step_count += 1
+                    else:
+                        action = self.choose_action(state, keys)
+
+                    next_state, _, done = (
+                        env.step(available_actions[action])
+                        if isinstance(env, Farkle)
+                        else env.step(action)
+                    )
+
+                    state = next_state
+
+                    if isinstance(env, Farkle) and any(
+                            s >= env.winning_score for s in env.scores
+                    ):
+                        if env.scores[0] > env.scores[1]:
+                            win_game += 1
+                    if env.done:
+                        break
+
+                if not done and step_count >= max_steps:
+                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+
+        print(f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes)*100:.2f}%")
