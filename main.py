@@ -149,10 +149,10 @@ if __name__ == "__main__":
     else:
         if mode == "train":
             # Train
-            score = agent.train(game, episodes=5)
+            score = agent.train(game, episodes=100)
             print(f"Trained Mean score: {score}")
             # Test
-            agent.test(game, episodes=10)
+            agent.test(game, episodes=20)
             print("\n--- Simulating a game after training ---")
             simulate_game(game, model=agent, manual=manual)
         else:

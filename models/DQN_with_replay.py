@@ -7,6 +7,7 @@ from tensorflow.keras.models import Sequential
 from tqdm import tqdm, trange
 
 from environement.farkle import Farkle
+from environement.lineworld import LineWorld
 from tools import *
 import time
 
@@ -147,6 +148,18 @@ class DQN_with_replay:
                 winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_game += 1
+            elif isinstance(env, LineWorld):
+                    while not done and step_count < max_steps:
+                        available_actions = env.available_actions()
+                        action = self.choose_action(state, available_actions)
+                        next_state, reward, done = env.step(action)
+                        state = next_state
+                        step_count += 1
+
+                        if done and reward == 1.0:
+                            win_game += 1
+                            break
+
             else:
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
