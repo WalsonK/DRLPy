@@ -138,7 +138,7 @@ class DQN_with_replay:
             self.update_epsilon()
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=500):
+    def test(self, env, episodes=200, max_steps=10):
         win_game = 0
         for e in trange(episodes, desc=f"Test"):
             state = env.reset()
@@ -154,10 +154,7 @@ class DQN_with_replay:
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
 
-                    if isinstance(env, LineWorld) or isinstance(env, GridWorld):
-                        action = self.choose_action(state, available_actions)
-                        step_count += 1
-                    elif hasattr(env, "current_player") and env.current_player == 1:
+                    if hasattr(env, "current_player") and env.current_player == 1:
                         action = self.choose_action(state, available_actions)
                         step_count += 1
                     else:
@@ -166,13 +163,8 @@ class DQN_with_replay:
                     next_state, reward, done = env.step(action)
                     state = next_state
 
-                    if isinstance(env, LineWorld) or isinstance(env, GridWorld):
-                        if done and reward == 1.0:
-                            win_game += 1
-                            break
-                    elif env.done:
-                        if env.winner == 1:
-                            win_game += 1
+                    if env.done and env.winner == 1.0:
+                        win_game += 1
                         break
 
                 if not done and step_count >= max_steps:

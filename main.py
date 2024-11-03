@@ -91,7 +91,7 @@ def simulate_game(game, model=None, manual=False):
                                 else "Random opponent wins!"
                             )
                         elif game.winner == -1:
-                            print("You win!" if manual else "Random opponent wins!")
+                            print("You Lose!" if manual else "Random opponent wins!")
                         else:
                             print("It's a draw!")
                     else:
