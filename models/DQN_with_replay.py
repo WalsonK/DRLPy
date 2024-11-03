@@ -8,22 +8,23 @@ from tqdm import tqdm, trange
 
 from environement.farkle import Farkle
 from environement.lineworld import LineWorld
+from environement.gridworld import GridWorld
 from tools import *
 import time
 
 
 class DQN_with_replay:
     def __init__(
-        self,
-        state_size,
-        action_size,
-        learning_rate=0.001,
-        gamma=0.95,
-        epsilon=1.0,
-        epsilon_min=0.01,
-        epsilon_decay=0.995,
-        batch_size=64,
-        memory_size=2000,
+            self,
+            state_size,
+            action_size,
+            learning_rate=0.001,
+            gamma=0.95,
+            epsilon=1.0,
+            epsilon_min=0.01,
+            epsilon_decay=0.995,
+            batch_size=64,
+            memory_size=2000,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -148,32 +149,28 @@ class DQN_with_replay:
                 winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_game += 1
-            elif isinstance(env, LineWorld):
-                    while not done and step_count < max_steps:
-                        available_actions = env.available_actions()
-                        action = self.choose_action(state, available_actions)
-                        next_state, reward, done = env.step(action)
-                        state = next_state
-                        step_count += 1
-
-                        if done and reward == 1.0:
-                            win_game += 1
-                            break
 
             else:
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
 
-                    if hasattr(env, "current_player") and env.current_player == 1:
+                    if isinstance(env, LineWorld) or isinstance(env, GridWorld):
+                        action = self.choose_action(state, available_actions)
+                        step_count += 1
+                    elif hasattr(env, "current_player") and env.current_player == 1:
                         action = self.choose_action(state, available_actions)
                         step_count += 1
                     else:
                         action = random.choice(available_actions)
 
-                    next_state, _, done = env.step(action)
+                    next_state, reward, done = env.step(action)
                     state = next_state
 
-                    if env.done:
+                    if isinstance(env, LineWorld) or isinstance(env, GridWorld):
+                        if done and reward == 1.0:
+                            win_game += 1
+                            break
+                    elif env.done:
                         if env.winner == 1:
                             win_game += 1
                         break
@@ -181,4 +178,5 @@ class DQN_with_replay:
                 if not done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
-        print(f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes)*100:.2f}%")
+        print(
+            f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes) * 100:.2f}%")
