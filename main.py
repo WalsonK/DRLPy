@@ -49,65 +49,45 @@ def simulate_game(game, model=None, manual=False):
             print()
 
             while not game.done:
+                # If it's player 1's turn
                 if hasattr(game, "current_player") and game.current_player == 1:
-                    if isinstance(model, DQN_with_replay.DQN_with_replay) and not manual:
-                        # Model vs Random (model is agent, user not playing)
-                        print("Agent model's turn.")
-                        available_actions = game.available_actions()
-                        action = model.choose_action(state, available_actions)
-                    elif model is None:
-                        # User vs Random (opponent is random)
-                        print("Random opponent's turn.")
-                        available_actions = game.available_actions()
-                        action = random.choice(available_actions)
-                    else:
-                        # User vs Model (agent's turn)
-                        print("Agent model's turn.")
-                        available_actions = game.available_actions()
-                        action = model.choose_action(state, available_actions)
-                else:
                     if manual:
-                        # User's manual turn
+                        # **User's Manual Turn** (User vs Random)
                         print("Your turn (Player).")
                         available_actions = game.available_actions()
                         action = manual_player(available_actions)
+                    elif isinstance(model, DQN_with_replay.DQN_with_replay):
+                        # **Model's Turn** (Model vs Random)
+                        print("Agent model's turn.")
+                        available_actions = game.available_actions()
+                        action = model.choose_action(state, available_actions)
                     else:
-                        # Random opponent's turn in Model vs Random
+                        # **Random Opponent's Turn**
                         print("Random opponent's turn.")
                         available_actions = game.available_actions()
                         action = random.choice(available_actions)
+                else:
+                    print("Opponent's turn.")
+                    available_actions = game.available_actions()
+                    action = random.choice(available_actions)
 
                 next_state, reward, done = game.step(action)
                 state = next_state
+
                 game.render()
                 print()
 
                 if done:
                     if hasattr(game, "winner"):
                         if game.winner == 1:
-                            print(
-                                "Agent model wins!"
-                                if model
-                                else "Random opponent wins!"
-                            )
-                        elif game.winner == -1:
-                            print("You Lose!" if manual else "Random opponent wins!")
-                        else:
-                            print("It's a draw!")
-                    else:
-                        if reward == 1.0:
-                            print(
-                                "Agent model wins!"
-                                if model
-                                else "Random opponent wins!"
-                            )
-                        elif reward == -1.0:
-                            print("You win!" if manual else "Agent model loses!")
+                            print("You win!" if manual else "Agent model wins!")
+                        elif game.winner != 1:
+                            print("You lose!" if manual else "Agent model loses!")
+
                     break
         else:
             game.play_game(show=True, agentOpponent=model)
 
-        # Replay prompt
         replay_choice = input("Do you want to play again? (y/n): ").strip().lower()
         replay_game = replay_choice == "y"
 
@@ -141,18 +121,22 @@ if __name__ == "__main__":
     mode = input("Do you want to play or train? (play/train): ").strip().lower()
     manual = True if mode == "play" else False
 
-    agent = DQN_with_replay.DQN_with_replay(state_size, action_size)
+    agent = DQN_with_replay.DQN_with_replay(state_size, action_size, learning_rate=0.01)
 
     if game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
         simulate_game(game, model=None, manual=True)
     else:
         if mode == "train":
+            if game_name in ["lineworld", "gridworld"]:
+                max_step = 10
+            else:
+                max_step = 300
             # Train
-            score = agent.train(game, episodes=100)
+            score = agent.train(game, episodes=150, max_steps=max_step)
             print(f"Trained Mean score: {score}")
             # Test
-            agent.test(game, episodes=20)
+            agent.test(game, episodes=10, max_steps=max_step)
             print("\n--- Simulating a game after training ---")
             simulate_game(game, model=agent, manual=manual)
         else:
