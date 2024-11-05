@@ -1,3 +1,4 @@
+import time
 from collections import deque
 
 import numpy as np
@@ -7,24 +8,23 @@ from tensorflow.keras.models import Sequential
 from tqdm import tqdm, trange
 
 from environement.farkle import Farkle
-from environement.lineworld import LineWorld
 from environement.gridworld import GridWorld
+from environement.lineworld import LineWorld
 from tools import *
-import time
 
 
 class DQN_with_replay:
     def __init__(
-            self,
-            state_size,
-            action_size,
-            learning_rate=0.001,
-            gamma=0.95,
-            epsilon=1.0,
-            epsilon_min=0.01,
-            epsilon_decay=0.995,
-            batch_size=64,
-            memory_size=2000,
+        self,
+        state_size,
+        action_size,
+        learning_rate=0.001,
+        gamma=0.95,
+        epsilon=1.0,
+        epsilon_min=0.01,
+        epsilon_decay=0.995,
+        batch_size=64,
+        memory_size=2000,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -171,4 +171,5 @@ class DQN_with_replay:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
         print(
-            f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes) * 100:.2f}%")
+            f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes) * 100:.2f}%"
+        )

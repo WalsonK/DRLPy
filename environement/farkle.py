@@ -370,15 +370,19 @@ class Farkle:
             print(f"Current turn score : {self.current_turn_score}")
         av_actions = self.available_actions()
         keys = list(av_actions.keys())
-        action = (agent.choose_action(self.get_state(), keys)
-                  if agent
-                  else random.choice(keys))
+        action = (
+            agent.choose_action(self.get_state(), keys)
+            if agent
+            else random.choice(keys)
+        )
         if self.printify:
             self.print_available_actions(av_actions)
             print(f"Player {self.current_player} choose action {action}")
         self.step(av_actions[action])
 
-    def play_game(self, isBotGame=False, show=False, agentPlayer=None, agentOpponent=None):
+    def play_game(
+        self, isBotGame=False, show=False, agentPlayer=None, agentOpponent=None
+    ):
         def solo_round(isb):
             if self.current_player == 1:
                 if self.current_turn_score > 0 and self.printify:
