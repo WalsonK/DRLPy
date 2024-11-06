@@ -9,11 +9,16 @@ class GridWorld:
         :param size: Taille de la grille (size x size).
         """
         self.size = size
+        self.current_player = 1
+        self.winner = None
         self.terminal_positions = [
             (0, 0),
             (size - 1, size - 1),
         ]  # Coins comme positions terminales
-        self.agent_pos = (1,1)   #self._get_random_position()  # Position initiale aléatoire
+        self.agent_pos = (
+            1,
+            1,
+        )  # self._get_random_position()  # Position initiale aléatoire
         self.done = False
 
     def _get_random_position(self):
@@ -40,8 +45,9 @@ class GridWorld:
         return []
 
     def reset(self):
-        self.agent_pos =  (1,1)  #self._get_random_position()
+        self.agent_pos = (1, 1)  # self._get_random_position()
         self.done = False
+        self.winner = None
         return self.state()
 
     def state(self):
@@ -63,6 +69,8 @@ class GridWorld:
 
         reward = self.score()
         self.done = self.is_game_over()
+        if reward == 1.0:
+            self.winner = self.current_player
 
         # Retourner l'état suivant, la récompense, et si la partie est terminée
         return self.state(), reward, self.done

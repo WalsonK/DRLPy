@@ -3,11 +3,13 @@ import numpy as np
 
 class LineWorld:
     def __init__(self, length: int, is_random: bool = False, start_position: int = 1):
+        self.current_player = 1
         self.length = length
         self.agent_position = (
             np.random.randint(1, length - 1) if is_random else start_position
         )
         self.terminal_positions = [0, length - 1]
+        self.winner = None
         self.done = False
 
     def available_actions(self):
@@ -17,6 +19,7 @@ class LineWorld:
 
     def reset(self):
         self.agent_position = np.random.randint(1, self.length - 1)
+        self.winner = None
         self.done = False  # Réinitialiser l'état 'done'
         return self.state()
 
@@ -35,6 +38,8 @@ class LineWorld:
 
         reward = self.score()
         self.done = self.is_game_over()
+        if reward == 1.0:
+            self.winner = self.current_player
 
         # Retourner l'état suivant, la récompense, et si la partie est terminée
         return self.state(), reward, self.done
