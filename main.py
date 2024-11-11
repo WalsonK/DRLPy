@@ -6,7 +6,7 @@ from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from environement.tictactoe import TicTacToe
-from models import DQN_with_replay
+from models import DQN_with_replay , DeepQLearning , DoubleDeepQLearning, DoubleDeepQLearningWithPrioritizedExperienceReplay
 
 
 # Game selection logic
@@ -57,6 +57,11 @@ def simulate_game(game, model=None, manual=False):
                         available_actions = game.available_actions()
                         action = manual_player(available_actions)
                     elif isinstance(model, DQN_with_replay.DQN_with_replay):
+                        # **Model's Turn** (Model vs Random)
+                        print("Agent model's turn.")
+                        available_actions = game.available_actions()
+                        action = model.choose_action(state, available_actions)
+                    elif isinstance(model, DeepQLearning.DQL):
                         # **Model's Turn** (Model vs Random)
                         print("Agent model's turn.")
                         available_actions = game.available_actions()
@@ -121,7 +126,10 @@ if __name__ == "__main__":
     mode = input("Do you want to play or train? (play/train): ").strip().lower()
     manual = True if mode == "play" else False
 
-    agent = DQN_with_replay.DQN_with_replay(state_size, action_size, learning_rate=0.01)
+    #agent = DQN_with_replay.DQN_with_replay(state_size, action_size, learning_rate=0.01)
+    #agent = DeepQLearning.DQL(state_size, action_size, learning_rate=0.01)
+    #agent = DoubleDeepQLearning.DDQL(state_size,action_size)
+    agent = DoubleDeepQLearningWithPrioritizedExperienceReplay.DDQLWithPER(state_size,action_size)
 
     if game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
@@ -133,7 +141,7 @@ if __name__ == "__main__":
             else:
                 max_step = 300
             # Train
-            score = agent.train(game, episodes=150, max_steps=max_step)
+            score = agent.train(game, episodes=200, max_steps=max_step)
             print(f"Trained Mean score: {score}")
             # Test
             agent.test(game, episodes=10, max_steps=max_step)
