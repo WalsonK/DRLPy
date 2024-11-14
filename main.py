@@ -133,7 +133,7 @@ if __name__ == "__main__":
             else:
                 max_step = 300
             # Train
-            score = agent.train(game, episodes=150, max_steps=max_step)
+            score = agent.train(game, episodes=100, max_steps=max_step)
             print(f"Trained Mean score: {score}")
             # Test
             agent.test(game, episodes=10, max_steps=max_step)
