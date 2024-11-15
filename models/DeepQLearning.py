@@ -3,6 +3,8 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tqdm import tqdm
+import os
+import pickle
 
 
 class DQL:
@@ -32,7 +34,7 @@ class DQL:
         model.add(Dense(self.action_size, activation="linear"))
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss="mse",
+            loss=tf.keras.losses.MeanSquaredError(),
         )
         return model
 
@@ -152,3 +154,48 @@ class DQL:
             f"- {episodes} games played\n"
             f"- Accuracy: {(win_game / episodes) * 100:.2f}%"
         )
+
+    def save_model(self, model_name):
+        """Save model and parameters"""
+        os.makedirs("saved_models", exist_ok=True)
+        model_path = f"saved_models/{model_name}.h5"
+        self.model.save(model_path)
+
+        # Save additional parameters
+        params = {
+            "state_size": self.state_size,
+            "action_size": self.action_size,
+            "learning_rate": self.learning_rate,
+            "gamma": self.gamma,
+            "epsilon": self.epsilon,
+            "epsilon_min": self.epsilon_min,
+            "epsilon_decay": self.epsilon_decay,
+        }
+
+        with open(f"saved_models/{model_name}_params.pkl", "wb") as f:
+            pickle.dump(params, f)
+
+        print(f"Model and parameters saved as '{model_name}'.")
+
+    def load_model(self, model_name):
+        """Load model and parameters"""
+        model_path = f"saved_models/{model_name}.h5"
+        params_path = f"saved_models/{model_name}_params.pkl"
+
+        if os.path.exists(model_path) and os.path.exists(params_path):
+            self.model = tf.keras.models.load_model(model_path)
+
+            with open(params_path, "rb") as f:
+                params = pickle.load(f)
+
+            self.state_size = params["state_size"]
+            self.action_size = params["action_size"]
+            self.learning_rate = params["learning_rate"]
+            self.gamma = params["gamma"]
+            self.epsilon = params["epsilon"]
+            self.epsilon_min = params["epsilon_min"]
+            self.epsilon_decay = params["epsilon_decay"]
+
+            print(f"Model and parameters loaded from '{model_name}'.")
+        else:
+            print(f"No saved model found with the name '{model_name}'.")

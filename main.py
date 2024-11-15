@@ -1,12 +1,14 @@
 import random
 
+from tensorflow.python.distribute.values_util import aggregation_error_msg
+from tensorflow.python.keras.models import load_model
 from tqdm import tqdm
 
 from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from environement.tictactoe import TicTacToe
-from models import DQN_with_replay , DeepQLearning , DoubleDeepQLearning, DoubleDeepQLearningWithPrioritizedExperienceReplay
+from models import DQN_with_replay , DeepQLearning , DoubleDeepQLearning, DoubleDeepQLearningWithPrioritizedExperienceReplay, DQN_with_replay
 
 
 # Game selection logic
@@ -123,29 +125,33 @@ if __name__ == "__main__":
     )
     game, state_size, action_size = select_game(game_name)
 
-    mode = input("Do you want to play or train? (play/train): ").strip().lower()
-    manual = True if mode == "play" else False
+    mode = input("Do you want to play, train, or test? (play/train/test): ").strip().lower()
+    manual = mode == "play"
 
-    #agent = DQN_with_replay.DQN_with_replay(state_size, action_size, learning_rate=0.01)
-    #agent = DeepQLearning.DQL(state_size, action_size, learning_rate=0.01)
-    #agent = DoubleDeepQLearning.DDQL(state_size,action_size)
-    agent = DoubleDeepQLearningWithPrioritizedExperienceReplay.DDQLWithPER(state_size,action_size)
+    agent = DQN_with_replay.DQN_with_replay(
+        state_size=state_size,
+        action_size=action_size)
 
-    if game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
+    if game_name == "gridworld":
+        max_step = 10
+    elif game_name == "lineworld":
+        max_step = 5
+    else:
+        max_step = 300
+
+    episode = 600
+
+    if mode == "train":
+        score = agent.train(game, episodes=episode, max_steps=max_step)
+        print(f"Trained Mean score: {score}")
+        agent.save_model(game_name)
+        agent.test(game, episodes=episode, max_steps=max_step)
+    elif mode == "test":
+        agent.load_model(game_name)
+        agent.test(game, episodes=episode, max_steps=max_step)
+        simulate_game(game, model=None, manual=True)
+    elif game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
         simulate_game(game, model=None, manual=True)
     else:
-        if mode == "train":
-            if game_name in ["lineworld", "gridworld"]:
-                max_step = 10
-            else:
-                max_step = 300
-            # Train
-            score = agent.train(game, episodes=200, max_steps=max_step)
-            print(f"Trained Mean score: {score}")
-            # Test
-            agent.test(game, episodes=10, max_steps=max_step)
-            print("\n--- Simulating a game after training ---")
-            simulate_game(game, model=agent, manual=manual)
-        else:
-            print("Play mode is not supported for automated DQN training.")
+        print("Invalid mode. Please choose 'play', 'train', or 'test'.")

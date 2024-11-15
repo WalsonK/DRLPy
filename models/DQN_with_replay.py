@@ -11,6 +11,8 @@ from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from tools import *
+import pickle
+import os
 
 
 class DQN_with_replay:
@@ -18,7 +20,7 @@ class DQN_with_replay:
         self,
         state_size,
         action_size,
-        learning_rate=0.001,
+        learning_rate=0.01,
         gamma=0.95,
         epsilon=1.0,
         epsilon_min=0.01,
@@ -44,7 +46,7 @@ class DQN_with_replay:
         model.add(Dense(self.action_size, activation="linear"))
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss="mse",
+            loss=tf.keras.losses.MeanSquaredError()
         )
         return model
 
@@ -173,3 +175,49 @@ class DQN_with_replay:
         print(
             f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes) * 100:.2f}%"
         )
+
+    def save_model(self, game_name):
+        """Save model and parameters"""
+        os.makedirs("agents", exist_ok=True)
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
+        self.model.save(model_path)
+
+        # Save additional parameters
+        params = {
+            "state_size": self.state_size,
+            "action_size": self.action_size,
+            "learning_rate": self.learning_rate,
+            "gamma": self.gamma,
+            "epsilon": self.epsilon,
+            "epsilon_min": self.epsilon_min,
+            "epsilon_decay": self.epsilon_decay,
+            "batch_size": self.batch_size,
+        }
+
+        with open(f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb") as f:
+            pickle.dump(params, f)
+
+        print(f"Model and parameters saved as '{game_name}'.")
+
+    def load_model(self, game_name):
+        """Load model and parameters"""
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
+        params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
+
+        if os.path.exists(model_path) and os.path.exists(params_path):
+            self.model = tf.keras.models.load_model(model_path)
+
+            with open(params_path, "rb") as f:
+                params = pickle.load(f)
+
+            self.state_size = params["state_size"]
+            self.action_size = params["action_size"]
+            self.learning_rate = params["learning_rate"]
+            self.gamma = params["gamma"]
+            self.epsilon = params["epsilon"]
+            self.epsilon_min = params["epsilon_min"]
+            self.epsilon_decay = params["epsilon_decay"]
+
+            print(f"Model and parameters loaded for '{game_name}'.")
+        else:
+            print(f"No saved model found with the game '{game_name}'.")

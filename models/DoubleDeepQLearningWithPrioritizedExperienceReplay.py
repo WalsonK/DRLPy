@@ -1,8 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.models import Sequential, clone_model
+from tensorflow.keras.models import Sequential, clone_model, load_model
 from tqdm import tqdm
+import pickle
+import os
 
 
 class SumTree:
@@ -154,7 +156,7 @@ class DDQLWithPER:
         ])
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss="mse"
+            loss=tf.keras.losses.MeanSquaredError()
         )
         return model
 
@@ -331,3 +333,40 @@ class DDQLWithPER:
             f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
             f"- Average reward per episode: {avg_reward:.2f}"
         )
+
+    def save_model(self, game_name):
+        agent_data = {
+            "main_model": self.main_model,
+            "target_model": self.target_model,
+            "state_size": self.state_size,
+            "action_size": self.action_size,
+            "learning_rate": self.learning_rate,
+            "gamma": self.gamma,
+            "epsilon": self.epsilon,
+            "epsilon_min": self.epsilon_min,
+            "epsilon_decay": self.epsilon_decay,
+            "target_update_frequency": self.target_update_frequency
+        }
+        os.makedirs("agents", exist_ok=True)
+        with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
+            pickle.dump(agent_data, f)
+        print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")
+
+    def load_model(self, game_name):
+        agent_path = f"agents/{self.__class__.__name__}_{game_name}.pkl"
+        if os.path.exists(agent_path):
+            with open(agent_path, "rb") as f:
+                agent_data = pickle.load(f)
+            self.main_model = agent_data["main_model"]
+            self.target_model = agent_data["target_model"]
+            self.state_size = agent_data["state_size"]
+            self.action_size = agent_data["action_size"]
+            self.learning_rate = agent_data["learning_rate"]
+            self.gamma = agent_data["gamma"]
+            self.epsilon = agent_data["epsilon"]
+            self.epsilon_min = agent_data["epsilon_min"]
+            self.epsilon_decay = agent_data["epsilon_decay"]
+            self.target_update_frequency = agent_data["target_update_frequency"]
+            print(f"Agent {self.__class__.__name__} pour le jeu {game_name} chargé.")
+        else:
+            print(f"Aucun agent sauvegardé pour le jeu {game_name} trouvé.")
