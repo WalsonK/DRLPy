@@ -6,6 +6,36 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tqdm import tqdm, trange
 import time
+import matplotlib.pyplot as plt
+from collections import Counter
+
+
+def print_metrics(episodes, scores, episode_times, actions, losses):
+    # scores metrics
+    plt.plot(episodes, scores)
+    plt.xlabel("Episodes")
+    plt.ylabel("Score")
+    plt.show()
+    # Episode times metrics
+    plt.plot(episodes, episode_times)
+    plt.xlabel("Episodes")
+    plt.ylabel("Time (s)")
+    plt.show()
+    # Actions choose distribution
+    counts = Counter(actions)
+    plt.figure(figsize=(14, 10))
+    plt.barh(list(counts.keys()), list(counts.values()))
+    plt.xlabel("Counts")
+    plt.ylabel("Action")
+    plt.yticks(ticks=list(counts.keys()))
+    plt.grid(axis="x", linestyle="--", alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+    # Losses metrics
+    plt.plot(losses)
+    plt.xlabel("Episodes")
+    plt.ylabel("Losses")
+    plt.show()
 
 
 class Reinforce:
@@ -25,16 +55,22 @@ class Reinforce:
         )
         return model
 
-    def train(self, num_episodes, environment, max_step):
-        for episode in range(num_episodes):
+    def train(self, environment, episodes, max_steps):
+        scores_list = []
+        episode_times = []
+        actions_list = []
+        losses_per_episode = []
+        for episode in range(episodes):
             # generate episode
-            states, actions, rewards, agent_action_times = self.generate_episode(environment, max_step)
-            print(states[-1])
+            start_time = time.time()
+            states, actions, rewards, agent_action_times = self.generate_episode(environment, max_steps)
+            end_time = time.time()
+            episode_times.append(end_time - start_time)
 
             # metrics
             t = 0
             pbar = tqdm(
-                total=len(states), desc=f"Episode {episode + 1}/ {num_episodes}", unit="Step",
+                total=len(states), desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
                 bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                 postfix=f"total reward: 0, agent Step: {t}, Average Action Time: 0",
                 dynamic_ncols=True
@@ -43,17 +79,21 @@ class Reinforce:
             # Calc cumulative reward
             G = self.calculate_reward(rewards)
 
+            episode_loss = 0
             # Update policy
             for t in range(len(states)):
                 state = np.expand_dims(states[t], axis=0)
                 action = actions[t]
                 G_t = G[t]
+                actions_list.append(action)
 
                 # Calc gradient
                 with tf.GradientTape() as tape:
                     action_probs = self.theta(state, training=True)
                     log_prob = tf.math.log(action_probs[0, action])
                     loss = -log_prob * G_t  # On maximise donc on minimise -G_t * log π(A_t|S_t)
+
+                episode_loss += loss.numpy()
 
                 # Update policy with gradient
                 grads = tape.gradient(loss, self.theta.trainable_variables)
@@ -68,9 +108,17 @@ class Reinforce:
                     "Agent Step": t,
                     "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0 # np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
                 })
+            scores_list.append(G[-1])
+            losses_per_episode.append(episode_loss)
             pbar.close()
 
-    def test(self, environment, episodes, max_step):
+        # Print metrics
+        print(losses_per_episode)
+        print_metrics(range(episodes), scores_list, episode_times, actions_list, losses_per_episode)
+
+        return np.mean(scores_list)
+
+    def test(self, environment, episodes, max_steps):
         win_games = 0
         for e in trange(episodes, desc="Testing", unit="episode"):
             state = environment.reset()
@@ -83,7 +131,7 @@ class Reinforce:
                     win_games += 1
 
             else:
-                while not environment.done and step_count < max_step:
+                while not environment.done and step_count < max_steps:
                     available_actions = environment.available_actions()
 
                     if hasattr(environment, "current_player") and environment.current_player == 1:
@@ -99,8 +147,8 @@ class Reinforce:
                         win_games += 1
                         break
 
-                if not done and step_count >= max_step:
-                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_step})")
+                if not done and step_count >= max_steps:
+                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
         print(
             f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
         )
@@ -108,11 +156,10 @@ class Reinforce:
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []
         step_count = 0
-        environment.reset()
+        state = environment.reset()
 
         if isinstance(environment, Farkle):
             environment.roll_dice()
-        state = environment.get_state()
         while not environment.done and step_count < max_step:
             available_actions = environment.available_actions()
             keys = (
@@ -138,10 +185,11 @@ class Reinforce:
             if hasattr(environment, "current_player") and environment.current_player == 1:
                 states.append(state)
                 actions.append(action)
-                rewards.append(reward)
                 step_count += 1
 
             state = next_state
+            if done:
+                rewards = np.full(len(states), environment.get_reward())
 
         if not environment.done and step_count >= max_step:
             print(f"reached max steps ({max_step})")
@@ -161,9 +209,8 @@ class Reinforce:
             returns.insert(0, gt)
         return returns
 
+# _env = Farkle(printing=False)
+# _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
 
-_env = Farkle(printing=False)
-_model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
-
-_model.train(num_episodes=2, environment=_env, max_step=300)
-_model.test(environment=_env, episodes=10, max_step=200)
+# _model.train(num_episodes=2, environment=_env, max_step=300)
+# _model.test(environment=_env, episodes=10, max_step=200)
