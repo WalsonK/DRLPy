@@ -128,7 +128,7 @@ if __name__ == "__main__":
     mode = input("Do you want to play, train, or test? (play/train/test): ").strip().lower()
     manual = mode == "play"
 
-    agent = DQN_with_replay.DQN_with_replay(
+    agent = DoubleDeepQLearningWithPrioritizedExperienceReplay.DDQLWithPER(
         state_size=state_size,
         action_size=action_size)
 
