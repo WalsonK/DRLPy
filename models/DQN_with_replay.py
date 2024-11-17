@@ -86,6 +86,7 @@ class DQN_with_replay:
 
     def train(self, env, episodes=200, max_steps=500):
         scores_list = []
+        agent_action_times = []
         for e in range(episodes):
             agent_action_times = []
             state = env.reset()
@@ -93,7 +94,13 @@ class DQN_with_replay:
             done = False
             step_count = 0
 
-            pbar = tqdm(total=max_steps, desc=f"Episode {e + 1}/{episodes}")
+            pbar = tqdm(
+                total=max_steps, desc=f"Episode {e + 1}/{episodes}", unit="Step",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
+                        f"Average Action Time: 0",
+                dynamic_ncols=True
+            )
 
             if isinstance(env, Farkle):
                 env.roll_dice()
@@ -123,13 +130,16 @@ class DQN_with_replay:
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
                 total_reward += reward
+                pbar.set_postfix({
+                    "Total Reward": total_reward,
+                    "Epsilon": self.epsilon,
+                    "Agent Step": step_count,
+                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
+                })
 
                 if env.done:
                     scores_list.append(total_reward)
-                    print(
-                        f"Episode {e + 1}/{episodes}, Total Reward: {total_reward}, Epsilon: {self.epsilon:.4f}, "
-                        f"Agent steps: {step_count}, Average Action Time: {np.mean(agent_action_times)}"
-                    )
+
                     break
 
             if not done and step_count >= max_steps:

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
@@ -63,13 +65,20 @@ class DQL:
 
     def train(self, env, episodes=200, max_steps=500):
         scores_list = []
+        agent_action_times = []
 
         for e in range(episodes):
             state = env.reset()
             total_reward = 0
             step_count = 0
 
-            pbar = tqdm(total=max_steps, desc=f"Episode {e + 1}/{episodes}")
+            pbar = tqdm(
+                total=max_steps, desc=f"Episode {e + 1}/{episodes}", unit="Step",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
+                        f"Average Action Time: 0",
+                dynamic_ncols=True
+            )
 
             if hasattr(env, 'roll_dice'):  # Pour l'environnement Farkle
                 env.roll_dice()
@@ -81,7 +90,10 @@ class DQL:
                         else available_actions)
 
                 if hasattr(env, "current_player") and env.current_player == 1:
+                    start_time = time.time()
                     action = self.choose_action(state, keys)
+                    end_time = time.time()
+                    agent_action_times.append(end_time - start_time)
                     step_count += 1
                 else:
                     action = np.random.choice(keys)
@@ -98,15 +110,16 @@ class DQL:
 
                 state = next_state
                 total_reward += reward
+                pbar.set_postfix({
+                    "Total Reward": total_reward,
+                    "Epsilon": self.epsilon,
+                    "Agent Step": step_count,
+                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
+                })
 
                 if env.done:
                     scores_list.append(total_reward)
-                    print(
-                        f"Episode {e + 1}/{episodes}, "
-                        f"Total Reward: {total_reward}, "
-                        f"Epsilon: {self.epsilon:.4f}, "
-                        f"Agent steps: {step_count}"
-                    )
+
                     break
 
             if not done and step_count >= max_steps:

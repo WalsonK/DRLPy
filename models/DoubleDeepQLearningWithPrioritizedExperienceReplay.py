@@ -5,6 +5,7 @@ from tensorflow.keras.models import Sequential, clone_model, load_model
 from tqdm import tqdm
 import pickle
 import os
+import time
 
 
 class SumTree:
@@ -233,6 +234,7 @@ class DDQLWithPER:
 
     def train(self, env, episodes=200, max_steps=500):
         scores_list = []
+        agent_action_times = []
         best_score = float('-inf')
 
         for e in range(episodes):
@@ -240,7 +242,13 @@ class DDQLWithPER:
             total_reward = 0
             step_count = 0
 
-            pbar = tqdm(total=max_steps, desc=f"Episode {e + 1}/{episodes}")
+            pbar = tqdm(
+                total=max_steps, desc=f"Episode {e + 1}/{episodes}", unit="Step",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
+                        f"Average Action Time: 0",
+                dynamic_ncols=True
+            )
 
             if hasattr(env, 'roll_dice'):
                 env.roll_dice()
@@ -252,7 +260,10 @@ class DDQLWithPER:
                         else available_actions)
 
                 if hasattr(env, "current_player") and env.current_player == 1:
+                    start_time = time.time()
                     action = self.choose_action(state, keys)
+                    end_time = time.time()
+                    agent_action_times.append(end_time - start_time)
                     step_count += 1
                 else:
                     action = np.random.choice(keys)
@@ -269,19 +280,18 @@ class DDQLWithPER:
 
                 state = next_state
                 total_reward += reward
+                pbar.set_postfix({
+                    "Total Reward": total_reward,
+                    "Epsilon": self.epsilon,
+                    "Agent Step": step_count,
+                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
+                })
 
                 if env.done:
                     scores_list.append(total_reward)
                     if total_reward > best_score:
                         best_score = total_reward
 
-                    print(
-                        f"Episode {e + 1}/{episodes}, "
-                        f"Total Reward: {total_reward}, "
-                        f"Best Score: {best_score}, "
-                        f"Epsilon: {self.epsilon:.4f}, "
-                        f"Steps: {step_count}"
-                    )
                     break
 
             if not done and step_count >= max_steps:
