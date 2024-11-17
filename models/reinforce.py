@@ -6,36 +6,7 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tqdm import tqdm, trange
 import time
-import matplotlib.pyplot as plt
-from collections import Counter
-
-
-def print_metrics(episodes, scores, episode_times, actions, losses):
-    # scores metrics
-    plt.plot(episodes, scores)
-    plt.xlabel("Episodes")
-    plt.ylabel("Score")
-    plt.show()
-    # Episode times metrics
-    plt.plot(episodes, episode_times)
-    plt.xlabel("Episodes")
-    plt.ylabel("Time (s)")
-    plt.show()
-    # Actions choose distribution
-    counts = Counter(actions)
-    plt.figure(figsize=(14, 10))
-    plt.barh(list(counts.keys()), list(counts.values()))
-    plt.xlabel("Counts")
-    plt.ylabel("Action")
-    plt.yticks(ticks=list(counts.keys()))
-    plt.grid(axis="x", linestyle="--", alpha=0.7)
-    plt.tight_layout()
-    plt.show()
-    # Losses metrics
-    plt.plot(losses)
-    plt.xlabel("Episodes")
-    plt.ylabel("Losses")
-    plt.show()
+from tools import print_metrics
 
 
 class Reinforce:
@@ -58,7 +29,9 @@ class Reinforce:
     def train(self, environment, episodes, max_steps):
         scores_list = []
         episode_times = []
+        action_times = []
         actions_list = []
+        steps_per_game = []
         losses_per_episode = []
         for episode in range(episodes):
             # generate episode
@@ -66,6 +39,8 @@ class Reinforce:
             states, actions, rewards, agent_action_times = self.generate_episode(environment, max_steps)
             end_time = time.time()
             episode_times.append(end_time - start_time)
+            action_times.append(np.mean(agent_action_times))
+            steps_per_game.append(len(states))
 
             # metrics
             t = 0
@@ -106,15 +81,17 @@ class Reinforce:
                 pbar.set_postfix({
                     "Total Reward": G_t,
                     "Agent Step": t,
-                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0 # np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
+                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
                 })
             scores_list.append(G[-1])
+            print(episode_loss)
             losses_per_episode.append(episode_loss)
             pbar.close()
 
         # Print metrics
         print(losses_per_episode)
-        print_metrics(range(episodes), scores_list, episode_times, actions_list, losses_per_episode)
+        print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
+                      losses_per_episode)
 
         return np.mean(scores_list)
 
