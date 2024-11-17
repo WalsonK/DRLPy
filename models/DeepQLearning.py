@@ -1,3 +1,5 @@
+import os
+import pickle
 import time
 
 import numpy as np
@@ -5,20 +7,20 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tqdm import tqdm
-import os
-import pickle
+
+from tools import print_metrics
 
 
 class DQL:
     def __init__(
-            self,
-            state_size,
-            action_size,
-            learning_rate=0.001,
-            gamma=0.95,
-            epsilon=1.0,
-            epsilon_min=0.01,
-            epsilon_decay=0.995,
+        self,
+        state_size,
+        action_size,
+        learning_rate=0.001,
+        gamma=0.95,
+        epsilon=1.0,
+        epsilon_min=0.01,
+        epsilon_decay=0.995,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -61,72 +63,111 @@ class DQL:
         current_q_values = self.model.predict(state.reshape(1, -1), verbose=0)
         current_q_values[0][action] = target
 
-        self.model.fit(state.reshape(1, -1), current_q_values, epochs=1, verbose=0)
+        history = self.model.fit(
+            state.reshape(1, -1), current_q_values, epochs=1, verbose=0
+        )
+        loss = history.history["loss"][0]
+        return loss
 
     def train(self, env, episodes=200, max_steps=500):
         scores_list = []
+        losses_per_episode = []
+        episode_times = []
         agent_action_times = []
+        action_list = []
 
         for e in range(episodes):
+            start_time = time.time()
             state = env.reset()
             total_reward = 0
             step_count = 0
+            episode_losses = []
 
             pbar = tqdm(
-                total=max_steps, desc=f"Episode {e + 1}/{episodes}", unit="Step",
+                total=max_steps,
+                desc=f"Episode {e + 1}/{episodes}",
+                unit="Step",
                 bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                 postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                        f"Average Action Time: 0",
-                dynamic_ncols=True
+                f"Average Action Time: 0",
+                dynamic_ncols=True,
             )
 
-            if hasattr(env, 'roll_dice'):  # Pour l'environnement Farkle
+            if hasattr(env, "roll_dice"):
                 env.roll_dice()
 
             while not env.done and step_count < max_steps:
                 available_actions = env.available_actions()
-                keys = (list(available_actions.keys())
-                        if hasattr(env, 'available_actions') and isinstance(env.available_actions(), dict)
-                        else available_actions)
+                keys = (
+                    list(available_actions.keys())
+                    if hasattr(env, "available_actions")
+                    and isinstance(env.available_actions(), dict)
+                    else available_actions
+                )
 
                 if hasattr(env, "current_player") and env.current_player == 1:
-                    start_time = time.time()
+                    start_time_action = time.time()
                     action = self.choose_action(state, keys)
-                    end_time = time.time()
-                    agent_action_times.append(end_time - start_time)
+                    end_time_action = time.time()
+                    agent_action_times.append(end_time_action - start_time_action)
                     step_count += 1
                 else:
                     action = np.random.choice(keys)
 
+                action_list.append(action)
+
                 pbar.update(1)
 
-                if hasattr(env, 'available_actions') and isinstance(env.available_actions(), dict):
+                if hasattr(env, "available_actions") and isinstance(
+                    env.available_actions(), dict
+                ):
                     next_state, reward, done = env.step(available_actions[action])
                 else:
                     next_state, reward, done = env.step(action)
 
-                # Apprentissage immédiat (sans replay memory)
-                self.learn(state, action, reward, next_state, done)
+                loss = self.learn(state, action, reward, next_state, done)
+                episode_losses.append(loss)
 
                 state = next_state
                 total_reward += reward
-                pbar.set_postfix({
-                    "Total Reward": total_reward,
-                    "Epsilon": self.epsilon,
-                    "Agent Step": step_count,
-                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
-                })
+                pbar.set_postfix(
+                    {
+                        "Total Reward": total_reward,
+                        "Epsilon": self.epsilon,
+                        "Agent Step": step_count,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                    }
+                )
 
                 if env.done:
                     scores_list.append(total_reward)
-
+                    losses_per_episode.append(
+                        np.mean(episode_losses) if episode_losses else 0
+                    )
                     break
 
-            if not done and step_count >= max_steps:
+            if not env.done and step_count >= max_steps:
                 print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+                scores_list.append(total_reward)
+                losses_per_episode.append(
+                    np.mean(episode_losses) if episode_losses else 0
+                )
+
+            end_time = time.time()
+            episode_times.append(end_time - start_time)
 
             self.update_epsilon()
             pbar.close()
+
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            losses=losses_per_episode,
+            actions=action_list,
+        )
 
         return np.mean(scores_list)
 
@@ -137,7 +178,7 @@ class DQL:
             done = False
             step_count = 0
 
-            if hasattr(env, 'play_game'):  # Pour Farkle
+            if hasattr(env, "play_game"):  # Pour Farkle
                 winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_game += 1
@@ -154,7 +195,7 @@ class DQL:
                     next_state, reward, done = env.step(action)
                     state = next_state
 
-                    if env.done and hasattr(env, 'winner') and env.winner == 1.0:
+                    if env.done and hasattr(env, "winner") and env.winner == 1.0:
                         win_game += 1
                         break
 

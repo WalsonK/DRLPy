@@ -1,3 +1,5 @@
+import os
+import pickle
 import time
 from collections import deque
 
@@ -11,8 +13,6 @@ from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from tools import *
-import pickle
-import os
 
 
 class DQN_with_replay:
@@ -46,7 +46,7 @@ class DQN_with_replay:
         model.add(Dense(self.action_size, activation="linear"))
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss=tf.keras.losses.MeanSquaredError()
+            loss=tf.keras.losses.MeanSquaredError(),
         )
         return model
 
@@ -55,7 +55,7 @@ class DQN_with_replay:
 
     def replay(self):
         if len(self.memory) < self.batch_size:
-            return
+            return 0
         minibatch = random.sample(self.memory, self.batch_size)
 
         states = np.array([transition[0] for transition in minibatch])
@@ -70,7 +70,9 @@ class DQN_with_replay:
                 target += self.gamma * np.amax(next_q_values[i])
             q_values[i][action] = target
 
-        self.model.fit(states, q_values, epochs=1, verbose=0)
+        history = self.model.fit(states, q_values, epochs=1, verbose=0)
+        loss = history.history["loss"][0]
+        return loss
 
     def update_epsilon(self):
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
@@ -86,24 +88,30 @@ class DQN_with_replay:
 
     def train(self, env, episodes=200, max_steps=500):
         scores_list = []
+        losses_per_episode = []
+        episode_times = []
         agent_action_times = []
+        action_list = []
+
         for e in range(episodes):
-            agent_action_times = []
+            start_time = time.time()
             state = env.reset()
             total_reward = 0
-            done = False
             step_count = 0
 
             pbar = tqdm(
-                total=max_steps, desc=f"Episode {e + 1}/{episodes}", unit="Step",
+                total=max_steps,
+                desc=f"Episode {e + 1}/{episodes}",
+                unit="Step",
                 bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                 postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                        f"Average Action Time: 0",
-                dynamic_ncols=True
+                f"Average Action Time: 0",
+                dynamic_ncols=True,
             )
 
             if isinstance(env, Farkle):
                 env.roll_dice()
+
             while not env.done and step_count < max_steps:
                 available_actions = env.available_actions()
                 keys = (
@@ -113,10 +121,11 @@ class DQN_with_replay:
                 )
 
                 if hasattr(env, "current_player") and env.current_player == 1:
-                    start_time = time.time()
+                    action_start_time = time.time()
                     action = self.choose_action(state, keys)
-                    end_time = time.time()
-                    agent_action_times.append(end_time - start_time)
+                    action_end_time = time.time()
+                    agent_action_times.append(action_end_time - action_start_time)
+                    action_list.append(action)
                     step_count += 1
                 else:
                     action = random.choice(keys)
@@ -127,27 +136,48 @@ class DQN_with_replay:
                     if isinstance(env, Farkle)
                     else env.step(action)
                 )
+
                 self.remember(state, action, reward, next_state, done)
                 state = next_state
                 total_reward += reward
-                pbar.set_postfix({
-                    "Total Reward": total_reward,
-                    "Epsilon": self.epsilon,
-                    "Agent Step": step_count,
-                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
-                })
+
+                pbar.set_postfix(
+                    {
+                        "Total Reward": total_reward,
+                        "Epsilon": self.epsilon,
+                        "Agent Step": step_count,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                    }
+                )
 
                 if env.done:
                     scores_list.append(total_reward)
-
                     break
 
-            if not done and step_count >= max_steps:
-                print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+            episode_duration = time.time() - start_time
+            episode_times.append(episode_duration)
 
-            self.replay()
+            episode_loss = self.replay()
+            losses_per_episode.append(episode_loss)
+
+            if not env.done and step_count >= max_steps:
+                print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+                scores_list.append(total_reward)
+                losses_per_episode.append(0)
 
             self.update_epsilon()
+            pbar.close()
+
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            losses=losses_per_episode,
+            actions=action_list,
+        )
+
         return np.mean(scores_list)
 
     def test(self, env, episodes=200, max_steps=10):
@@ -204,7 +234,9 @@ class DQN_with_replay:
             "batch_size": self.batch_size,
         }
 
-        with open(f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb") as f:
+        with open(
+            f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
+        ) as f:
             pickle.dump(params, f)
 
         print(f"Model and parameters saved as '{game_name}'.")

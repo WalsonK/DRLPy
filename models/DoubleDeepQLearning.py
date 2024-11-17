@@ -1,3 +1,5 @@
+import os
+import pickle
 import time
 
 import numpy as np
@@ -6,21 +8,21 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential, clone_model, load_model
 from tensorflow.python.keras.utils.vis_utils import is_wrapped_model
 from tqdm import tqdm
-import os
-import pickle
+
+from tools import print_metrics
 
 
 class DDQL:
     def __init__(
-            self,
-            state_size,
-            action_size,
-            learning_rate=0.01,
-            gamma=0.95,
-            epsilon=1.0,
-            epsilon_min=0.01,
-            epsilon_decay=0.995,
-            target_update_frequency=100
+        self,
+        state_size,
+        action_size,
+        learning_rate=0.01,
+        gamma=0.95,
+        epsilon=1.0,
+        epsilon_min=0.01,
+        epsilon_decay=0.995,
+        target_update_frequency=100,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -32,20 +34,21 @@ class DDQL:
         self.target_update_frequency = target_update_frequency
         self.training_step = 0
 
-        # Création des deux réseaux
         self.main_model = self.build_model()
         self.target_model = clone_model(self.main_model)
         self.target_model.set_weights(self.main_model.get_weights())
 
     def build_model(self):
-        model = Sequential([
-            Dense(64, input_dim=self.state_size, activation="relu"),
-            Dense(64, activation="relu"),
-            Dense(self.action_size, activation="linear")
-        ])
+        model = Sequential(
+            [
+                Dense(64, input_dim=self.state_size, activation="relu"),
+                Dense(64, activation="relu"),
+                Dense(self.action_size, activation="linear"),
+            ]
+        )
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss="mse"
+            loss="mse",
         )
         return model
 
@@ -72,93 +75,125 @@ class DDQL:
         # Calcul de la Q-valeur cible en utilisant les deux réseaux
         if not done:
             # Le réseau principal sélectionne l'action
-            next_q_values_main = self.main_model.predict(next_state.reshape(1, -1), verbose=0)
+            next_q_values_main = self.main_model.predict(
+                next_state.reshape(1, -1), verbose=0
+            )
             best_action = np.argmax(next_q_values_main[0])
 
             # Le réseau cible évalue cette action
-            next_q_values_target = self.target_model.predict(next_state.reshape(1, -1), verbose=0)
+            next_q_values_target = self.target_model.predict(
+                next_state.reshape(1, -1), verbose=0
+            )
             target = reward + self.gamma * next_q_values_target[0][best_action]
         else:
             target = reward
 
-        # Mise à jour du réseau principal
         current_q_values = self.main_model.predict(state.reshape(1, -1), verbose=0)
         current_q_values[0][action] = target
-        self.main_model.fit(state.reshape(1, -1), current_q_values, epochs=1, verbose=0)
+        history = self.main_model.fit(
+            state.reshape(1, -1), current_q_values, epochs=1, verbose=0
+        )
+
+        loss = history.history["loss"][0]
 
         # Mise à jour périodique du réseau cible
         if self.training_step % self.target_update_frequency == 0:
             self.update_target_model()
 
+        return loss
+
     def train(self, env, episodes=200, max_steps=500):
         scores_list = []
+        losses_per_episode = []
+        episode_times = []
         agent_action_times = []
-        best_score = float('-inf')
+        action_list = []
 
         for e in range(episodes):
+            start_time = time.time()
             state = env.reset()
             total_reward = 0
             step_count = 0
+            episode_losses = []
 
             pbar = tqdm(
-                total=max_steps, desc=f"Episode {e + 1}/{episodes}", unit="Step",
+                total=max_steps,
+                desc=f"Episode {e + 1}/{episodes}",
+                unit="Step",
                 bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                        f"Average Action Time: 0",
-                dynamic_ncols=True
+                postfix=f"Total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, Agent Step: {step_count}, "
+                f"Average Action Time: 0",
+                dynamic_ncols=True,
             )
 
-            if hasattr(env, 'roll_dice'):
+            if hasattr(env, "roll_dice"):
                 env.roll_dice()
 
             while not env.done and step_count < max_steps:
                 available_actions = env.available_actions()
-                keys = (list(available_actions.keys())
-                        if hasattr(env, 'available_actions') and isinstance(env.available_actions(), dict)
-                        else available_actions)
+                keys = (
+                    list(available_actions.keys())
+                    if hasattr(env, "available_actions")
+                    and isinstance(env.available_actions(), dict)
+                    else available_actions
+                )
 
                 if hasattr(env, "current_player") and env.current_player == 1:
-                    start_time = time.time()
+                    start_time_action = time.time()
                     action = self.choose_action(state, keys)
-                    end_time = time.time()
-                    agent_action_times.append(end_time - start_time)
+                    end_time_action = time.time()
+                    agent_action_times.append(end_time_action - start_time_action)
                     step_count += 1
                 else:
                     action = np.random.choice(keys)
 
+                action_list.append(action)
+
                 pbar.update(1)
 
-                # Gestion des différents types d'environnements
-                if hasattr(env, 'available_actions') and isinstance(env.available_actions(), dict):
+                if hasattr(env, "available_actions") and isinstance(
+                    env.available_actions(), dict
+                ):
                     next_state, reward, done = env.step(available_actions[action])
                 else:
                     next_state, reward, done = env.step(action)
 
-                # Apprentissage avec DDQN
-                self.learn(state, action, reward, next_state, done)
+                loss = self.learn(state, action, reward, next_state, done)
+                episode_losses.append(loss)
 
                 state = next_state
                 total_reward += reward
-                pbar.set_postfix({
-                    "Total Reward": total_reward,
-                    "Epsilon": self.epsilon,
-                    "Agent Step": step_count,
-                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0,
-                })
+                pbar.set_postfix(
+                    {
+                        "Total Reward": total_reward,
+                        "Epsilon": self.epsilon,
+                        "Agent Step": step_count,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                    }
+                )
 
                 if env.done:
-                    scores_list.append(total_reward)
-                    if total_reward > best_score:
-                        best_score = total_reward
-
-
                     break
 
-            if not done and step_count >= max_steps:
-                print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+            end_time = time.time()
+            episode_times.append(end_time - start_time)
+            scores_list.append(total_reward)
+            losses_per_episode.append(
+                np.mean(episode_losses)
+            )  # Moyenne des pertes de l'épisode
 
             self.update_epsilon()
             pbar.close()
+
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            losses=losses_per_episode,
+            actions=action_list,
+        )
 
         return np.mean(scores_list)
 
@@ -171,7 +206,7 @@ class DDQL:
             episode_reward = 0
             step_count = 0
 
-            if hasattr(env, 'play_game'):
+            if hasattr(env, "play_game"):
                 winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_game += 1
@@ -189,7 +224,7 @@ class DDQL:
                     episode_reward += reward
                     state = next_state
 
-                    if env.done and hasattr(env, 'winner') and env.winner == 1.0:
+                    if env.done and hasattr(env, "winner") and env.winner == 1.0:
                         win_game += 1
                         break
 
@@ -214,7 +249,7 @@ class DDQL:
             "epsilon": self.epsilon,
             "epsilon_min": self.epsilon_min,
             "epsilon_decay": self.epsilon_decay,
-            "target_update_frequency": self.target_update_frequency
+            "target_update_frequency": self.target_update_frequency,
         }
         os.makedirs("agents", exist_ok=True)
         with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
