@@ -63,7 +63,11 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
 
     # Losses metrics
     if losses:
-        plt.plot(losses)
+        if len(losses) == 2:
+            plt.plot(episodes, losses[0], label="Policy loss")
+            plt.plot(episodes, losses[1], label="Baseline loss")
+        else:
+            plt.plot(losses)
         plt.title("Losses evolution per episode")
         plt.xlabel("Episodes")
         plt.ylabel("Losses")
