@@ -62,20 +62,8 @@ class Reinforce:
                 G_t = G[t]
                 actions_list.append(action)
 
-                # Calc gradient
-                with tf.GradientTape() as tape:
-                    action_probs = self.theta(state, training=True)
-                    log_prob = tf.math.log(action_probs[0, action])
-                    loss = -log_prob * G_t  # On maximise donc on minimise -G_t * log π(A_t|S_t)
-
-                episode_loss += loss.numpy()
-
-                # Update policy with gradient
-                grads = tape.gradient(loss, self.theta.trainable_variables)
-
-                # Mise à jour manuelle de chaque variable de theta en appliquant le taux d'apprentissage
-                for i, var in enumerate(self.theta.trainable_variables):
-                    var.assign_add(self.learning_rate * (self.gamma ** t) * G_t * grads[i])
+                loss = self.update_policy(state, action, G_t, t)
+                episode_loss += loss
 
                 pbar.update(1)
                 pbar.set_postfix({
@@ -89,7 +77,6 @@ class Reinforce:
             pbar.close()
 
         # Print metrics
-        print(losses_per_episode)
         print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
                       losses_per_episode)
 
@@ -165,8 +152,9 @@ class Reinforce:
                 step_count += 1
 
             state = next_state
-            if done:
-                rewards = np.full(len(states), environment.get_reward())
+            rewards.append(reward)
+            #if done:
+                #rewards = np.full(len(states), environment.get_reward())
 
         if not environment.done and step_count >= max_step:
             print(f"reached max steps ({max_step})")
@@ -185,6 +173,22 @@ class Reinforce:
             gt = self.gamma * gt + reward
             returns.insert(0, gt)
         return returns
+
+    def update_policy(self, state, action, G_t, t):
+        # Calc gradient
+        with tf.GradientTape() as tape:
+            action_probs = self.theta(state, training=True)
+            log_prob = tf.math.log(action_probs[0, action])
+            loss = -log_prob * G_t  # On maximise donc on minimise -G_t * log π(A_t|S_t)
+
+        # Update policy with gradient
+        grads = tape.gradient(loss, self.theta.trainable_variables)
+
+        # Mise à jour manuelle de chaque variable de theta en appliquant le taux d'apprentissage
+        for i, var in enumerate(self.theta.trainable_variables):
+            var.assign_add(self.learning_rate * (self.gamma ** t) * G_t * grads[i])
+
+        return loss.numpy()
 
 # _env = Farkle(printing=False)
 # _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
