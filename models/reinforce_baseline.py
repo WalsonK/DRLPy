@@ -5,7 +5,7 @@ from environement.farkle import Farkle
 import random
 import time
 import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from tools import print_metrics
 
 
@@ -95,6 +95,40 @@ class ReinforceBaseline:
         print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
                       losses_per_episode)
 
+    def test(self, environment, episodes, max_steps):
+        win_games = 0
+        for e in trange(episodes, desc="Testing", unit="episode"):
+            state = environment.reset()
+            done = False
+            step_count = 0
+
+            if isinstance(environment, Farkle):
+                winner = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                if winner == 0:
+                    win_games += 1
+
+            else:
+                while not environment.done and step_count < max_steps:
+                    available_actions = environment.available_actions()
+
+                    if hasattr(environment, "current_player") and environment.current_player == 1:
+                        action = self.choose_action(state, available_actions)
+                        step_count += 1
+                    else:
+                        action = random.choice(available_actions)
+
+                    next_state, reward, done = environment.step(action)
+                    state = next_state
+
+                    if environment.done and environment.winner == 1.0:
+                        win_games += 1
+                        break
+
+                if not done and step_count >= max_steps:
+                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+        print(
+            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
+        )
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []
         step_count = 0
@@ -182,4 +216,5 @@ class ReinforceBaseline:
 _env = Farkle(printing=False)
 _model = ReinforceBaseline(_env.state_size, _env.actions_size, learning_rate=0.01, gamma=0.9)
 
-_model.train(environment=_env, episodes=10, max_steps=300)
+_model.train(environment=_env, episodes=2, max_steps=300)
+_model.test(environment=_env, episodes=10, max_steps=200)
