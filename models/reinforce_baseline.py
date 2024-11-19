@@ -201,7 +201,6 @@ class ReinforceBaseline:
 
     def update_baseline(self, state, G_t, t):
         with tf.GradientTape() as tape:
-            tape.watch(self.baseline.trainable_variables)
             baseline_values = self.baseline(state, training=True)
             baseline_loss = tf.reduce_mean((G_t - baseline_values) ** 2)
 
