@@ -6,6 +6,7 @@ import numpy as np
 import random
 from tqdm import tqdm
 import time
+from tools import print_metrics
 
 
 class ReinforceActorCritic:
@@ -32,6 +33,14 @@ class ReinforceActorCritic:
         return available_actions[action_index]
 
     def train(self, environment, episodes, max_steps):
+        scores_list = []
+        episode_times = []
+        action_times = []
+        actions_list = []
+        steps_per_game = []
+        losses_per_episode = []
+        policy_losses_per_episode = []
+        baseline_losses_per_episode = []
         for episode in range(episodes):
             state = environment.reset()
             state = np.expand_dims(state, axis=0)
@@ -46,6 +55,9 @@ class ReinforceActorCritic:
                 dynamic_ncols=True
             )
             agent_action_times = []
+            episode_policy_loss = 0
+            episode_baseline_loss = 0
+            episode_start_time = time.time()
 
             if isinstance(environment, Farkle):
                 environment.roll_dice()
@@ -62,6 +74,7 @@ class ReinforceActorCritic:
                     action = self.choose_action(state, keys)
                     action_end_time = time.time()
                     agent_action_times.append(action_end_time - action_start_time)
+                    actions_list.append(action)
                     step_count += 1
                 else:
                     action = random.choice(keys)
@@ -79,6 +92,9 @@ class ReinforceActorCritic:
                 baseline_loss = self.update_baseline(state, delta)
                 policy_loss = self.update_policy(state, action, delta, importance)
 
+                episode_policy_loss += policy_loss
+                episode_baseline_loss += baseline_loss
+
                 importance = importance * self.gamma
                 state = next_state
                 baseline = next_baseline
@@ -92,8 +108,23 @@ class ReinforceActorCritic:
                     "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
                 })
 
+                if done:
+                    episode_end_time = time.time()
+                    episode_times.append(episode_end_time - episode_start_time)
+                    scores_list.append(reward)
+                    action_times.append(np.mean(agent_action_times))
+                    steps_per_game.append(step_count)
+                    policy_losses_per_episode.append(episode_policy_loss)
+                    baseline_losses_per_episode.append(episode_baseline_loss)
+
             pbar.close()
-            # print(f"Episode: {episode +1}/{episodes}, Steps: {step_count}, score : {environment.get_reward()}")
+
+        losses_per_episode.append(policy_losses_per_episode)
+        losses_per_episode.append(baseline_losses_per_episode)
+
+        # Print metrics
+        print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
+                      losses_per_episode)
 
     def update_baseline(self, state, delta):
         with tf.GradientTape() as tape:
