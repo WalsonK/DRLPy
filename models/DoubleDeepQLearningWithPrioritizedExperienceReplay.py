@@ -233,7 +233,8 @@ class DDQLWithPER:
     def update_epsilon(self):
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    def train(self, env, episodes=200, max_steps=500):
+    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
+
         scores_list = []
         losses_per_episode = []
         episode_times = []
@@ -241,133 +242,147 @@ class DDQLWithPER:
         action_list = []
         best_score = float("-inf")
 
-        for e in range(episodes):
-            start_time = time.time()
-            state = env.reset()
-            total_reward = 0
-            step_count = 0
-            episode_losses = []
 
-            pbar = tqdm(
-                total=max_steps,
-                desc=f"Episode {e + 1}/{episodes}",
-                unit="Step",
-                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                postfix=f"total reward: {total_reward}, Epsilon: {self.epsilon:.4f}, agent Step: {step_count}, Average Action Time: 0",
-                dynamic_ncols=True,
-            )
+        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}.txt", "a") as file:
+            file.write("Training Started\n")
+            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            if hasattr(env, "roll_dice"):
-                env.roll_dice()
+            for e in range(episodes):
+                start_time = time.time()
+                state = env.reset()
+                total_reward = 0
+                step_count = 0
+                episode_losses = []
 
-            while not env.done and step_count < max_steps:
-                available_actions = env.available_actions()
-                keys = (
-                    list(available_actions.keys())
-                    if hasattr(env, "available_actions")
-                    and isinstance(env.available_actions(), dict)
-                    else available_actions
+                pbar = tqdm(
+                    total=max_steps,
+                    desc=f"Episode {e + 1}/{episodes}",
+                    unit="Step",
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                    postfix=f"total reward: {total_reward}, Epsilon: {self.epsilon:.4f}, agent Step: {step_count}, Average Action Time: 0",
+                    dynamic_ncols=True,
                 )
 
-                if hasattr(env, "current_player") and env.current_player == 1:
-                    start_action_time = time.time()
-                    action = self.choose_action(state, keys)
-                    end_action_time = time.time()
-                    agent_action_times.append(end_action_time - start_action_time)
-                    step_count += 1
-                else:
-                    action = np.random.choice(keys)
+                if hasattr(env, "roll_dice"):
+                    env.roll_dice()
 
-                action_list.append(action)  # Enregistrer l'action choisie
-
-                pbar.update(1)
-
-                if hasattr(env, "available_actions") and isinstance(
-                    env.available_actions(), dict
-                ):
-                    next_state, reward, done = env.step(available_actions[action])
-                else:
-                    next_state, reward, done = env.step(action)
-
-                self.remember(state, action, reward, next_state, done)
-
-                if len(self.memory.tree.data) >= self.batch_size:
-                    batch, indices, is_weights = self.memory.sample(self.batch_size)
-                    states = np.array([exp[0] for exp in batch])
-                    actions = np.array([exp[1] for exp in batch])
-                    rewards = np.array([exp[2] for exp in batch])
-                    next_states = np.array([exp[3] for exp in batch])
-                    dones = np.array([exp[4] for exp in batch])
-
-                    current_q_values = self.main_model.predict(states, verbose=0)
-                    next_q_values_main = self.main_model.predict(next_states, verbose=0)
-                    next_q_values_target = self.target_model.predict(
-                        next_states, verbose=0
+                while not env.done and step_count < max_steps:
+                    available_actions = env.available_actions()
+                    keys = (
+                        list(available_actions.keys())
+                        if hasattr(env, "available_actions")
+                        and isinstance(env.available_actions(), dict)
+                        else available_actions
                     )
 
-                    target_q_values = current_q_values.copy()
-                    for i in range(self.batch_size):
-                        if dones[i]:
-                            target = rewards[i]
-                        else:
-                            best_action = np.argmax(next_q_values_main[i])
-                            target = (
-                                rewards[i]
-                                + self.gamma * next_q_values_target[i][best_action]
-                            )
-                        target_q_values[i][actions[i]] = target
+                    if hasattr(env, "current_player") and env.current_player == 1:
+                        start_action_time = time.time()
+                        action = self.choose_action(state, keys)
+                        end_action_time = time.time()
+                        agent_action_times.append(end_action_time - start_action_time)
+                        step_count += 1
+                    else:
+                        action = np.random.choice(keys)
 
-                    loss = tf.reduce_mean(
-                        tf.multiply(
-                            is_weights,
-                            tf.reduce_mean(
-                                tf.square(target_q_values - current_q_values), axis=1
-                            ),
+                    action_list.append(action)  # Enregistrer l'action choisie
+
+                    pbar.update(1)
+
+                    if hasattr(env, "available_actions") and isinstance(
+                        env.available_actions(), dict
+                    ):
+                        next_state, reward, done = env.step(available_actions[action])
+                    else:
+                        next_state, reward, done = env.step(action)
+
+                    self.remember(state, action, reward, next_state, done)
+
+                    if len(self.memory.tree.data) >= self.batch_size:
+                        batch, indices, is_weights = self.memory.sample(self.batch_size)
+                        states = np.array([exp[0] for exp in batch])
+                        actions = np.array([exp[1] for exp in batch])
+                        rewards = np.array([exp[2] for exp in batch])
+                        next_states = np.array([exp[3] for exp in batch])
+                        dones = np.array([exp[4] for exp in batch])
+
+                        current_q_values = self.main_model.predict(states, verbose=0)
+                        next_q_values_main = self.main_model.predict(next_states, verbose=0)
+                        next_q_values_target = self.target_model.predict(
+                            next_states, verbose=0
                         )
-                    ).numpy()
 
-                    episode_losses.append(loss)
+                        target_q_values = current_q_values.copy()
+                        for i in range(self.batch_size):
+                            if dones[i]:
+                                target = rewards[i]
+                            else:
+                                best_action = np.argmax(next_q_values_main[i])
+                                target = (
+                                    rewards[i]
+                                    + self.gamma * next_q_values_target[i][best_action]
+                                )
+                            target_q_values[i][actions[i]] = target
 
-                self.replay()
-                state = next_state
-                total_reward += reward
+                        loss = tf.reduce_mean(
+                            tf.multiply(
+                                is_weights,
+                                tf.reduce_mean(
+                                    tf.square(target_q_values - current_q_values), axis=1
+                                ),
+                            )
+                        ).numpy()
 
-                pbar.set_postfix(
-                    {
-                        "Total Reward": total_reward,
-                        "Epsilon": self.epsilon,
-                        "Agent Step": step_count,
-                        "Average Action Time": np.mean(agent_action_times)
-                        if len(agent_action_times) > 0
-                        else 0,
-                        "Loss": np.mean(episode_losses) if episode_losses else 0,
-                    }
-                )
+                        episode_losses.append(loss)
 
-                if env.done:
-                    if total_reward > best_score:
-                        best_score = total_reward
-                    break
+                    self.replay()
+                    state = next_state
+                    total_reward += reward
 
-            pbar.close()
+                    pbar.set_postfix(
+                        {
+                            "Total Reward": total_reward,
+                            "Epsilon": self.epsilon,
+                            "Agent Step": step_count,
+                            "Average Action Time": np.mean(agent_action_times)
+                            if len(agent_action_times) > 0
+                            else 0,
+                            "Loss": np.mean(episode_losses) if episode_losses else 0,
+                        }
+                    )
 
-            scores_list.append(total_reward)
-            losses_per_episode.append(np.mean(episode_losses) if episode_losses else 0)
-            end_time = time.time()
-            episode_times.append(end_time - start_time)
+                    if env.done:
+                        if total_reward > best_score:
+                            best_score = total_reward
+                        break
 
-            self.update_epsilon()
+                pbar.close()
 
-        print_metrics(
-            episodes=range(episodes),
-            scores=scores_list,
-            episode_times=episode_times,
-            losses=losses_per_episode,
-            actions=action_list,
-        )
+                scores_list.append(total_reward)
+                losses_per_episode.append(np.mean(episode_losses) if episode_losses else 0)
+                end_time = time.time()
+                episode_times.append(end_time - start_time)
+
+                self.update_epsilon()
+
+                if (e + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps)
+                    file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
+
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
+
+            print_metrics(
+                episodes=range(episodes),
+                scores=scores_list,
+                episode_times=episode_times,
+                losses=losses_per_episode,
+                actions=action_list,
+            )
+
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10):
+    def test(self, env, episodes=200, max_steps=10, test_intervals=[1000, 10_000, 100_000, 1000000]):
         win_game = 0
         total_reward = 0
 
@@ -407,6 +422,8 @@ class DDQLWithPER:
             f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
             f"- Average reward per episode: {avg_reward:.2f}"
         )
+        win_rate = win_game / episodes
+        return win_rate, avg_reward
 
     def save_model(self, game_name):
         agent_data = {

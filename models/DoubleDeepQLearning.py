@@ -102,98 +102,117 @@ class DDQL:
 
         return loss
 
-    def train(self, env, episodes=200, max_steps=500):
+    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
+        """
+        Entraîne l'agent et effectue des tests à des intervalles spécifiques, en enregistrant les résultats dans un fichier.
+        Args:
+            env: L'environnement dans lequel l'agent évolue.
+            episodes: Le nombre total d'épisodes d'entraînement.
+            max_steps: Le nombre maximal de steps par épisode.
+            test_intervals: Liste des intervalles d'épisodes pour effectuer les tests.
+        """
         scores_list = []
         losses_per_episode = []
         episode_times = []
         agent_action_times = []
         action_list = []
 
-        for e in range(episodes):
-            start_time = time.time()
-            state = env.reset()
-            total_reward = 0
-            step_count = 0
-            episode_losses = []
+        # Ouvrir le fichier pour écrire les résultats
+        with open("training_results.txt", "a") as file:
+            file.write("Training Started\n")
+            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            pbar = tqdm(
-                total=max_steps,
-                desc=f"Episode {e + 1}/{episodes}",
-                unit="Step",
-                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                postfix=f"Total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, Agent Step: {step_count}, "
-                f"Average Action Time: 0",
-                dynamic_ncols=True,
+            for e in range(episodes):
+                start_time = time.time()
+                state = env.reset()
+                total_reward = 0
+                step_count = 0
+                episode_losses = []
+
+                pbar = tqdm(
+                    total=max_steps,
+                    desc=f"Episode {e + 1}/{episodes}",
+                    unit="Step",
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                    postfix=f"Total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, Agent Step: {step_count}, "
+                    f"Average Action Time: 0",
+                    dynamic_ncols=True,
+                )
+
+                if hasattr(env, "roll_dice"):
+                    env.roll_dice()
+
+                while not env.done and step_count < max_steps:
+                    available_actions = env.available_actions()
+                    keys = (
+                        list(available_actions.keys())
+                        if hasattr(env, "available_actions")
+                        and isinstance(env.available_actions(), dict)
+                        else available_actions
+                    )
+
+                    if hasattr(env, "current_player") and env.current_player == 1:
+                        start_time_action = time.time()
+                        action = self.choose_action(state, keys)
+                        end_time_action = time.time()
+                        agent_action_times.append(end_time_action - start_time_action)
+                        step_count += 1
+                    else:
+                        action = np.random.choice(keys)
+
+                    action_list.append(action)
+
+                    pbar.update(1)
+
+                    if hasattr(env, "available_actions") and isinstance(
+                        env.available_actions(), dict
+                    ):
+                        next_state, reward, done = env.step(available_actions[action])
+                    else:
+                        next_state, reward, done = env.step(action)
+
+                    loss = self.learn(state, action, reward, next_state, done)
+                    episode_losses.append(loss)
+
+                    state = next_state
+                    total_reward += reward
+                    pbar.set_postfix(
+                        {
+                            "Total Reward": total_reward,
+                            "Epsilon": self.epsilon,
+                            "Agent Step": step_count,
+                            "Average Action Time": np.mean(agent_action_times)
+                            if len(agent_action_times) > 0
+                            else 0,
+                        }
+                    )
+
+                    if env.done:
+                        break
+
+                end_time = time.time()
+                episode_times.append(end_time - start_time)
+                scores_list.append(total_reward)
+                losses_per_episode.append(np.mean(episode_losses))
+
+                self.update_epsilon()
+                pbar.close()
+
+                if (e + 1) in test_intervals:
+                    avg_score = self.test(env, episodes=100, max_steps=max_steps)  # Test sur 100 épisodes pour chaque palier
+                    file.write(f"Test after {e + 1} episodes: Average score: {avg_score}\n")
+
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
+
+            print_metrics(
+                episodes=range(episodes),
+                scores=scores_list,
+                episode_times=episode_times,
+                losses=losses_per_episode,
+                actions=action_list,
             )
-
-            if hasattr(env, "roll_dice"):
-                env.roll_dice()
-
-            while not env.done and step_count < max_steps:
-                available_actions = env.available_actions()
-                keys = (
-                    list(available_actions.keys())
-                    if hasattr(env, "available_actions")
-                    and isinstance(env.available_actions(), dict)
-                    else available_actions
-                )
-
-                if hasattr(env, "current_player") and env.current_player == 1:
-                    start_time_action = time.time()
-                    action = self.choose_action(state, keys)
-                    end_time_action = time.time()
-                    agent_action_times.append(end_time_action - start_time_action)
-                    step_count += 1
-                else:
-                    action = np.random.choice(keys)
-
-                action_list.append(action)
-
-                pbar.update(1)
-
-                if hasattr(env, "available_actions") and isinstance(
-                    env.available_actions(), dict
-                ):
-                    next_state, reward, done = env.step(available_actions[action])
-                else:
-                    next_state, reward, done = env.step(action)
-
-                loss = self.learn(state, action, reward, next_state, done)
-                episode_losses.append(loss)
-
-                state = next_state
-                total_reward += reward
-                pbar.set_postfix(
-                    {
-                        "Total Reward": total_reward,
-                        "Epsilon": self.epsilon,
-                        "Agent Step": step_count,
-                        "Average Action Time": np.mean(agent_action_times)
-                        if len(agent_action_times) > 0
-                        else 0,
-                    }
-                )
-
-                if env.done:
-                    break
-
-            end_time = time.time()
-            episode_times.append(end_time - start_time)
-            scores_list.append(total_reward)
-            losses_per_episode.append(
-                np.mean(episode_losses)
-            )  # Moyenne des pertes de l'épisode
-
-            self.update_epsilon()
-            pbar.close()
-
-        print_metrics(
-            episodes=range(episodes),
-            scores=scores_list,
-            episode_times=episode_times,
-            losses=losses_per_episode,
-            actions=action_list,
-        )
 
         return np.mean(scores_list)
 

@@ -86,89 +86,101 @@ class DQN_with_replay:
             valid_q_values[action] = q_values[0][action]
         return np.argmax(valid_q_values)
 
-    def train(self, env, episodes=200, max_steps=500):
+    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
         scores_list = []
         losses_per_episode = []
         episode_times = []
         agent_action_times = []
         action_list = []
 
-        for e in range(episodes):
-            start_time = time.time()
-            state = env.reset()
-            total_reward = 0
-            step_count = 0
+        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}.txt", "a") as file:
+            file.write("Training Started\n")
+            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            pbar = tqdm(
-                total=max_steps,
-                desc=f"Episode {e + 1}/{episodes}",
-                unit="Step",
-                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                f"Average Action Time: 0",
-                dynamic_ncols=True,
-            )
 
-            if isinstance(env, Farkle):
-                env.roll_dice()
+            for e in range(episodes):
+                start_time = time.time()
+                state = env.reset()
+                total_reward = 0
+                step_count = 0
 
-            while not env.done and step_count < max_steps:
-                available_actions = env.available_actions()
-                keys = (
-                    list(available_actions.keys())
-                    if isinstance(env, Farkle)
-                    else available_actions
+                pbar = tqdm(
+                    total=max_steps,
+                    desc=f"Episode {e + 1}/{episodes}",
+                    unit="Step",
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                    postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
+                    f"Average Action Time: 0",
+                    dynamic_ncols=True,
                 )
 
-                if hasattr(env, "current_player") and env.current_player == 1:
-                    action_start_time = time.time()
-                    action = self.choose_action(state, keys)
-                    action_end_time = time.time()
-                    agent_action_times.append(action_end_time - action_start_time)
-                    action_list.append(action)
-                    step_count += 1
-                else:
-                    action = random.choice(keys)
+                if isinstance(env, Farkle):
+                    env.roll_dice()
 
-                pbar.update(1)
-                next_state, reward, done = (
-                    env.step(available_actions[action])
-                    if isinstance(env, Farkle)
-                    else env.step(action)
-                )
+                while not env.done and step_count < max_steps:
+                    available_actions = env.available_actions()
+                    keys = (
+                        list(available_actions.keys())
+                        if isinstance(env, Farkle)
+                        else available_actions
+                    )
 
-                self.remember(state, action, reward, next_state, done)
-                state = next_state
-                total_reward += reward
+                    if hasattr(env, "current_player") and env.current_player == 1:
+                        action_start_time = time.time()
+                        action = self.choose_action(state, keys)
+                        action_end_time = time.time()
+                        agent_action_times.append(action_end_time - action_start_time)
+                        action_list.append(action)
+                        step_count += 1
+                    else:
+                        action = random.choice(keys)
 
-                pbar.set_postfix(
-                    {
-                        "Total Reward": total_reward,
-                        "Epsilon": self.epsilon,
-                        "Agent Step": step_count,
-                        "Average Action Time": np.mean(agent_action_times)
-                        if len(agent_action_times) > 0
-                        else 0,
-                    }
-                )
+                    pbar.update(1)
+                    next_state, reward, done = (
+                        env.step(available_actions[action])
+                        if isinstance(env, Farkle)
+                        else env.step(action)
+                    )
 
-                if env.done:
+                    self.remember(state, action, reward, next_state, done)
+                    state = next_state
+                    total_reward += reward
+
+                    pbar.set_postfix(
+                        {
+                            "Total Reward": total_reward,
+                            "Epsilon": self.epsilon,
+                            "Agent Step": step_count,
+                            "Average Action Time": np.mean(agent_action_times)
+                            if len(agent_action_times) > 0
+                            else 0,
+                        }
+                    )
+
+                    if env.done:
+                        scores_list.append(total_reward)
+                        break
+
+                episode_duration = time.time() - start_time
+                episode_times.append(episode_duration)
+
+                episode_loss = self.replay()
+                losses_per_episode.append(episode_loss)
+
+                if not env.done and step_count >= max_steps:
+                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
                     scores_list.append(total_reward)
-                    break
+                    losses_per_episode.append(0)
 
-            episode_duration = time.time() - start_time
-            episode_times.append(episode_duration)
+                self.update_epsilon()
+                pbar.close()
+                if (e + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps)
+                    file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
 
-            episode_loss = self.replay()
-            losses_per_episode.append(episode_loss)
-
-            if not env.done and step_count >= max_steps:
-                print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-                scores_list.append(total_reward)
-                losses_per_episode.append(0)
-
-            self.update_epsilon()
-            pbar.close()
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         print_metrics(
             episodes=range(episodes),
@@ -182,10 +194,12 @@ class DQN_with_replay:
 
     def test(self, env, episodes=200, max_steps=10):
         win_game = 0
+        total_reward = 0
         for e in trange(episodes, desc=f"Test"):
             state = env.reset()
             done = False
             step_count = 0
+            episode_reward = 0
 
             if isinstance(env, Farkle):
                 winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
@@ -203,18 +217,23 @@ class DQN_with_replay:
                         action = random.choice(available_actions)
 
                     next_state, reward, done = env.step(action)
+                    episode_reward += reward
                     state = next_state
 
                     if env.done and env.winner == 1.0:
                         win_game += 1
                         break
 
+                total_reward += episode_reward
+
                 if not done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-
+        avg_reward = total_reward / episodes
         print(
             f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes) * 100:.2f}%"
         )
+        win_rate = win_game / episodes
+        return win_rate, avg_reward
 
     def save_model(self, game_name):
         """Save model and parameters"""
