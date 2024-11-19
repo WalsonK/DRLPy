@@ -149,7 +149,7 @@ if __name__ == "__main__":
     elif mode == "test":
         agent.load_model(game_name)
         agent.test(game, episodes=episode, max_steps=max_step)
-        simulate_game(game, model=None, manual=True)
+        simulate_game(game, model=agent, manual=True)
     elif game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
         simulate_game(game, model=None, manual=True)

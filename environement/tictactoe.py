@@ -20,6 +20,14 @@ class TicTacToe:
     def available_actions(self):
         return [i for i in range(9) if self.board.flatten()[i] == 0]
 
+    def get_reward(self):
+        reward = 0
+        if self.winner == self.current_player:
+            reward = 1
+        elif self.winner == 0:
+            reward = -1
+        return reward
+
     def step(self, action):
         if self.board.flatten()[action] == 0:
             row, col = divmod(action, 3)
