@@ -168,9 +168,9 @@ class DQL:
                     win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps)
                     file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
 
-        file.write("\nTraining Complete\n")
-        file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
-        file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         print_metrics(
             episodes=range(episodes),
