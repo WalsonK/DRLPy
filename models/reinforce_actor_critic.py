@@ -4,6 +4,8 @@ from tensorflow.keras.models import Sequential
 from environement.farkle import Farkle
 import numpy as np
 import random
+from tqdm import tqdm
+import time
 
 
 class ReinforceActorCritic:
@@ -35,8 +37,15 @@ class ReinforceActorCritic:
             state = np.expand_dims(state, axis=0)
             step_count = 0
             importance = 1
-
             baseline = self.baseline.predict(state, verbose=0)[0][0]
+
+            pbar = tqdm(
+                total=max_steps, desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, agent Step: {step_count}, Average Action Time: 0",
+                dynamic_ncols=True
+            )
+            agent_action_times = []
 
             if isinstance(environment, Farkle):
                 environment.roll_dice()
@@ -49,7 +58,10 @@ class ReinforceActorCritic:
                 )
 
                 if hasattr(environment, "current_player") and environment.current_player == 1:
+                    action_start_time = time.time()
                     action = self.choose_action(state, keys)
+                    action_end_time = time.time()
+                    agent_action_times.append(action_end_time - action_start_time)
                     step_count += 1
                 else:
                     action = random.choice(keys)
@@ -71,7 +83,17 @@ class ReinforceActorCritic:
                 state = next_state
                 baseline = next_baseline
 
-            print(f"Episode: {episode +1}/{episodes}, Steps: {step_count}, score : {environment.get_reward()}")
+                pbar.update(1)
+                pbar.set_postfix({
+                    "Reward": reward,
+                    "Agent Step": step_count,
+                    "Policy loss": policy_loss,
+                    "Baseline loss": baseline_loss,
+                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
+                })
+
+            pbar.close()
+            # print(f"Episode: {episode +1}/{episodes}, Steps: {step_count}, score : {environment.get_reward()}")
 
     def update_baseline(self, state, delta):
         with tf.GradientTape() as tape:
