@@ -7,6 +7,8 @@ from tensorflow.keras.models import Sequential
 from tqdm import tqdm, trange
 import time
 from tools import print_metrics
+import os
+import pickle
 
 
 class Reinforce:
@@ -190,8 +192,45 @@ class Reinforce:
 
         return loss.numpy()
 
+    def save_model(self, game_name):
+        """Save model and parameters"""
+        os.makedirs("agents", exist_ok=True)
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
+        self.theta.save(model_path)
+
+        # Save additional parameters
+        params = {
+            "learning_rate": self.learning_rate,
+            "gamma": self.gamma
+        }
+
+        with open(f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb") as f:
+            pickle.dump(params, f)
+
+        print(f"Model and parameters saved as '{game_name}'.")
+
+    def load_model(self, game_name):
+        """Load model and parameters"""
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
+        params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
+
+        if os.path.exists(model_path) and os.path.exists(params_path):
+            self.theta = tf.keras.models.load_model(model_path)
+
+            with open(params_path, "rb") as f:
+                params = pickle.load(f)
+
+            self.learning_rate = params["learning_rate"]
+            self.gamma = params["gamma"]
+
+
 # _env = Farkle(printing=False)
 # _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
 
-# _model.train(num_episodes=2, environment=_env, max_step=300)
-# _model.test(environment=_env, episodes=10, max_step=200)
+# _model.train(environment=_env, episodes=2, max_steps=300)
+# _model.test(environment=_env, episodes=10, max_steps=200)
+# name = "farkle_test_save_load"
+# _model.save_model(name)
+# model_test = Reinforce(4, 4, learning_rate=10)
+# model_test.load_model(name)
+# model_test.test(environment=_env, episodes=10, max_steps=200)
