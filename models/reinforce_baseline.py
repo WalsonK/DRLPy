@@ -7,6 +7,8 @@ import time
 import numpy as np
 from tqdm import tqdm, trange
 from tools import print_metrics
+import os
+import pickle
 
 
 class ReinforceBaseline:
@@ -211,9 +213,39 @@ class ReinforceBaseline:
 
         return baseline_loss.numpy()
 
+    def save_model(self, game_name):
+        agent_data = {
+            "learning_rate": self.learning_rate,
+            "theta_weights": self.theta.get_weights(),
+            "baseline_weights": self.baseline.get_weights(),
+            "gamma": self.gamma,
+        }
+        os.makedirs("agents", exist_ok=True)
+        with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
+            pickle.dump(agent_data, f)
+        print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")
 
-_env = Farkle(printing=False)
-_model = ReinforceBaseline(_env.state_size, _env.actions_size, learning_rate=0.01, gamma=0.9)
+    def load_model(self, game_name):
+        agent_path = f"agents/{self.__class__.__name__}_{game_name}.pkl"
+        if os.path.exists(agent_path):
+            with open(agent_path, "rb") as f:
+                agent_data = pickle.load(f)
+            self.learning_rate = agent_data["learning_rate"]
+            self.theta.set_weights(agent_data["theta_weights"])
+            self.baseline.set_weights(agent_data["baseline_weights"])
+            self.gamma = agent_data["gamma"]
+            print(f"Agent {self.__class__.__name__} pour le jeu {game_name} chargé.")
+        else:
+            print(f"Aucun agent sauvegardé pour le jeu {game_name} trouvé.")
 
-_model.train(environment=_env, episodes=2, max_steps=300)
-_model.test(environment=_env, episodes=10, max_steps=200)
+
+# _env = Farkle(printing=False)
+# _model = ReinforceBaseline(_env.state_size, _env.actions_size, learning_rate=0.01, gamma=0.9)
+
+# _model.train(environment=_env, episodes=10, max_steps=300)
+# _model.test(environment=_env, episodes=4, max_steps=200)
+# _model.save_model("reinforce_baseline_farkle_10")
+
+# model_test = ReinforceBaseline(_env.state_size, _env.actions_size, 1, 1)
+# model_test.load_model("reinforce_baseline_farkle_10")
+# model_test.test(environment=_env, episodes=4, max_steps=200)
