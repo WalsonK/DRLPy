@@ -64,7 +64,7 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
 
     # Losses metrics
     if losses:
-        if len(losses) == 2:
+        if isinstance(losses, list) and all(isinstance(sublist, list) for sublist in losses):
             plt.plot(episodes, losses[0], label="Policy loss")
             plt.plot(episodes, losses[1], label="Baseline loss")
         else:
