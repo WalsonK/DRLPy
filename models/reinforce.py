@@ -12,7 +12,7 @@ import pickle
 
 
 class Reinforce:
-    def __init__(self, state_size, action_size, learning_rate):
+    def __init__(self, state_size, action_size, learning_rate=0.1):
         self.learning_rate = learning_rate
         self.theta = self.build_model(state_size, action_size)
         self.gamma = 0.9

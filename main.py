@@ -1,14 +1,11 @@
 import random
-
-from tensorflow.python.distribute.values_util import aggregation_error_msg
-from tensorflow.python.keras.models import load_model
 from tqdm import tqdm
 
 from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from environement.tictactoe import TicTacToe
-from models import DQN_with_replay , DeepQLearning , DoubleDeepQLearning, DoubleDeepQLearningWithPrioritizedExperienceReplay, DQN_with_replay
+import models
 
 
 # Game selection logic
@@ -58,12 +55,7 @@ def simulate_game(game, model=None, manual=False):
                         print("Your turn (Player).")
                         available_actions = game.available_actions()
                         action = manual_player(available_actions)
-                    elif isinstance(model, DQN_with_replay.DQN_with_replay):
-                        # **Model's Turn** (Model vs Random)
-                        print("Agent model's turn.")
-                        available_actions = game.available_actions()
-                        action = model.choose_action(state, available_actions)
-                    elif isinstance(model, DeepQLearning.DQL):
+                    elif any(isinstance(model, cls) for cls in vars(models).values() if isinstance(cls, type)):
                         # **Model's Turn** (Model vs Random)
                         print("Agent model's turn.")
                         available_actions = game.available_actions()
@@ -74,9 +66,15 @@ def simulate_game(game, model=None, manual=False):
                         available_actions = game.available_actions()
                         action = random.choice(available_actions)
                 else:
-                    print("Opponent's turn.")
-                    available_actions = game.available_actions()
-                    action = random.choice(available_actions)
+                    if any(isinstance(model, cls) for cls in vars(models).values() if isinstance(cls, type)):
+                        # **Model's Turn** (User vs Model)
+                        print("Agent model's turn.")
+                        available_actions = game.available_actions()
+                        action = model.choose_action(state, available_actions)
+                    else:
+                        print("Opponent's turn.")
+                        available_actions = game.available_actions()
+                        action = random.choice(available_actions)
 
                 next_state, reward, done = game.step(action)
                 state = next_state
@@ -128,9 +126,36 @@ if __name__ == "__main__":
     mode = input("Do you want to play, train, or test? (play/train/test): ").strip().lower()
     manual = mode == "play"
 
-    agent = DoubleDeepQLearningWithPrioritizedExperienceReplay.DDQLWithPER(
-        state_size=state_size,
-        action_size=action_size)
+    agent = None
+    if mode == "train":
+        agent_name = (
+            int(
+                input("Enter the name of the agent:\n"
+                      "1 - Deep QLearning\n"
+                      "2 - Double Deep QLearning\n"
+                      "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
+                      "4 - DQN With Replay\n"
+                      "5 - Reinforce\n"
+                      "6 - Reinforce with actor critic\n"
+                      "7 - Reinforce with baseline\n")
+            )
+        )
+        if agent_name == 1:
+            agent = models.DQL(state_size, action_size)
+        elif agent_name == 2:
+            agent = models.DDQL(state_size, action_size)
+        elif agent_name == 3:
+            agent = models.DDQLWithPER(state_size, action_size)
+        elif agent_name == 4:
+            agent = models.DQN_with_replay(state_size, action_size)
+        elif agent_name == 5:
+            agent = models.Reinforce(state_size, action_size)
+        elif agent_name == 6:
+            agent = models.ReinforceActorCritic(state_size, action_size)
+        elif agent_name == 7:
+            agent = models.ReinforceBaseline(state_size, action_size)
+        else:
+            agent = models.DQL(state_size, action_size)
 
     if game_name == "gridworld":
         max_step = 10
@@ -139,13 +164,17 @@ if __name__ == "__main__":
     else:
         max_step = 300
 
-    episode = 600
+    episode = 10
 
     if mode == "train":
+        print(f"Starting training with {agent.__class__.__name__}")
         score = agent.train(game, episodes=episode, max_steps=max_step)
         print(f"Trained Mean score: {score}")
-        agent.save_model(game_name)
+        is_saving = input("Do you want to save the model? (y/n): ").strip().lower()
+        if is_saving == "y":
+            agent.save_model(game_name)
         agent.test(game, episodes=episode, max_steps=max_step)
+        simulate_game(game, model=agent, manual=True)
     elif mode == "test":
         agent.load_model(game_name)
         agent.test(game, episodes=episode, max_steps=max_step)

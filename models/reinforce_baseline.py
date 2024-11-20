@@ -12,7 +12,7 @@ import pickle
 
 
 class ReinforceBaseline:
-    def __init__(self, state_size, action_size, learning_rate, gamma):
+    def __init__(self, state_size, action_size, learning_rate=0.1, gamma=0.9):
         self.learning_rate = learning_rate
         self.theta = self.build_model(state_size, action_size)
         self.baseline = self.build_model(state_size, 1)
