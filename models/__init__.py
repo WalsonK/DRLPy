@@ -6,6 +6,7 @@ from .DQN_with_replay import DQN_with_replay
 from .reinforce import Reinforce
 from .reinforce_baseline import ReinforceBaseline
 from .reinforce_actor_critic import ReinforceActorCritic
+from .PPO import PPO
 
 __all__ = [
     "DQL",
@@ -14,5 +15,6 @@ __all__ = [
     "DQN_with_replay",
     "Reinforce",
     "ReinforceBaseline",
-    "ReinforceActorCritic"
+    "ReinforceActorCritic",
+    "PPO"
 ]
