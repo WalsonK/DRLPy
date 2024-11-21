@@ -43,83 +43,94 @@ class ReinforceActorCritic:
         losses_per_episode = []
         policy_losses_per_episode = []
         baseline_losses_per_episode = []
-        for episode in range(episodes):
-            state = environment.reset()
-            state = np.expand_dims(state, axis=0)
-            step_count = 0
-            importance = 1
-            baseline = self.baseline.predict(state, verbose=0)[0][0]
 
-            pbar = tqdm(
-                total=max_steps, desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
-                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                postfix=f"total reward: 0, agent Step: {step_count}, Average Action Time: 0",
-                dynamic_ncols=True
-            )
-            agent_action_times = []
-            episode_policy_loss = 0
-            episode_baseline_loss = 0
-            episode_start_time = time.time()
+        with open(
+                f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
+                "a") as file:
+            file.write("Training Started\n")
+            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            if isinstance(environment, Farkle):
-                environment.roll_dice()
-            while not environment.done and step_count < max_steps:
-                available_actions = environment.available_actions()
-                keys = (
-                    list(available_actions.keys())
-                    if isinstance(environment, Farkle)
-                    else available_actions
+            for episode in range(episodes):
+                state = environment.reset()
+                state = np.expand_dims(state, axis=0)
+                step_count = 0
+                importance = 1
+                baseline = self.baseline.predict(state, verbose=0)[0][0]
+
+                pbar = tqdm(
+                    total=max_steps, desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                    postfix=f"total reward: 0, agent Step: {step_count}, Average Action Time: 0",
+                    dynamic_ncols=True
                 )
+                agent_action_times = []
+                episode_policy_loss = 0
+                episode_baseline_loss = 0
+                episode_start_time = time.time()
 
-                if hasattr(environment, "current_player") and environment.current_player == 1:
-                    action_start_time = time.time()
-                    action = self.choose_action(state, keys)
-                    action_end_time = time.time()
-                    agent_action_times.append(action_end_time - action_start_time)
-                    actions_list.append(action)
-                    step_count += 1
-                else:
-                    action = random.choice(keys)
+                if isinstance(environment, Farkle):
+                    environment.roll_dice()
+                while not environment.done and step_count < max_steps:
+                    available_actions = environment.available_actions()
+                    keys = (
+                        list(available_actions.keys())
+                        if isinstance(environment, Farkle)
+                        else available_actions
+                    )
 
-                next_state, reward, done = (
-                    environment.step(available_actions[action])
-                    if isinstance(environment, Farkle)
-                    else environment.step(action)
-                )
-                next_state = np.expand_dims(next_state, axis=0)
+                    if hasattr(environment, "current_player") and environment.current_player == 1:
+                        action_start_time = time.time()
+                        action = self.choose_action(state, keys)
+                        action_end_time = time.time()
+                        agent_action_times.append(action_end_time - action_start_time)
+                        actions_list.append(action)
+                        step_count += 1
+                    else:
+                        action = random.choice(keys)
 
-                next_baseline = self.baseline.predict(next_state, verbose=0)[0][0] if not done else 0
-                delta = reward + (self.gamma * next_baseline) - baseline
+                    next_state, reward, done = (
+                        environment.step(available_actions[action])
+                        if isinstance(environment, Farkle)
+                        else environment.step(action)
+                    )
+                    next_state = np.expand_dims(next_state, axis=0)
 
-                baseline_loss = self.update_baseline(state, delta)
-                policy_loss = self.update_policy(state, action, delta, importance)
+                    next_baseline = self.baseline.predict(next_state, verbose=0)[0][0] if not done else 0
+                    delta = reward + (self.gamma * next_baseline) - baseline
 
-                episode_policy_loss += policy_loss
-                episode_baseline_loss += baseline_loss
+                    baseline_loss = self.update_baseline(state, delta)
+                    policy_loss = self.update_policy(state, action, delta, importance)
 
-                importance = importance * self.gamma
-                state = next_state
-                baseline = next_baseline
+                    episode_policy_loss += policy_loss
+                    episode_baseline_loss += baseline_loss
 
-                pbar.update(1)
-                pbar.set_postfix({
-                    "Reward": reward,
-                    "Agent Step": step_count,
-                    "Policy loss": policy_loss,
-                    "Baseline loss": baseline_loss,
-                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
-                })
+                    importance = importance * self.gamma
+                    state = next_state
+                    baseline = next_baseline
 
-                if done:
-                    episode_end_time = time.time()
-                    episode_times.append(episode_end_time - episode_start_time)
-                    scores_list.append(reward)
-                    action_times.append(np.mean(agent_action_times))
-                    steps_per_game.append(step_count)
-                    policy_losses_per_episode.append(episode_policy_loss)
-                    baseline_losses_per_episode.append(episode_baseline_loss)
+                    pbar.update(1)
+                    pbar.set_postfix({
+                        "Reward": reward,
+                        "Agent Step": step_count,
+                        "Policy loss": policy_loss,
+                        "Baseline loss": baseline_loss,
+                        "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
+                    })
 
-            pbar.close()
+                    if done:
+                        episode_end_time = time.time()
+                        episode_times.append(episode_end_time - episode_start_time)
+                        scores_list.append(reward)
+                        action_times.append(np.mean(agent_action_times))
+                        steps_per_game.append(step_count)
+                        policy_losses_per_episode.append(episode_policy_loss)
+                        baseline_losses_per_episode.append(episode_baseline_loss)
+
+                pbar.close()
+
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         losses_per_episode.append(policy_losses_per_episode)
         losses_per_episode.append(baseline_losses_per_episode)

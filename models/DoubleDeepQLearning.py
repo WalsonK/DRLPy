@@ -118,7 +118,7 @@ class DDQL:
         action_list = []
 
         # Ouvrir le fichier pour écrire les résultats
-        with open("training_results.txt", "a") as file:
+        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 

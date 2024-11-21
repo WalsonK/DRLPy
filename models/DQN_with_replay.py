@@ -93,7 +93,7 @@ class DQN_with_replay:
         agent_action_times = []
         action_list = []
 
-        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}.txt", "a") as file:
+        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 

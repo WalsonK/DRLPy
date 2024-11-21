@@ -35,48 +35,57 @@ class Reinforce:
         actions_list = []
         steps_per_game = []
         losses_per_episode = []
-        for episode in range(episodes):
-            # generate episode
-            start_time = time.time()
-            states, actions, rewards, agent_action_times = self.generate_episode(environment, max_steps)
-            end_time = time.time()
-            episode_times.append(end_time - start_time)
-            action_times.append(np.mean(agent_action_times))
-            steps_per_game.append(len(states))
 
-            # metrics
-            t = 0
-            pbar = tqdm(
-                total=len(states), desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
-                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                postfix=f"total reward: 0, agent Step: {t}, Average Action Time: 0",
-                dynamic_ncols=True
-            )
+        with open(f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+            file.write("Training Started\n")
+            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            # Calc cumulative reward
-            G = self.calculate_reward(rewards)
+            for episode in range(episodes):
+                # generate episode
+                start_time = time.time()
+                states, actions, rewards, agent_action_times = self.generate_episode(environment, max_steps)
+                end_time = time.time()
+                episode_times.append(end_time - start_time)
+                action_times.append(np.mean(agent_action_times))
+                steps_per_game.append(len(states))
 
-            episode_loss = 0
-            # Update policy
-            for t in range(len(states)):
-                state = np.expand_dims(states[t], axis=0)
-                action = actions[t]
-                G_t = G[t]
-                actions_list.append(action)
+                # metrics
+                t = 0
+                pbar = tqdm(
+                    total=len(states), desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                    postfix=f"total reward: 0, agent Step: {t}, Average Action Time: 0",
+                    dynamic_ncols=True
+                )
 
-                loss = self.update_policy(state, action, G_t, t)
-                episode_loss += loss
+                # Calc cumulative reward
+                G = self.calculate_reward(rewards)
 
-                pbar.update(1)
-                pbar.set_postfix({
-                    "Total Reward": G_t,
-                    "Agent Step": t,
-                    "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
-                })
-            scores_list.append(G[-1])
-            print(episode_loss)
-            losses_per_episode.append(episode_loss)
-            pbar.close()
+                episode_loss = 0
+                # Update policy
+                for t in range(len(states)):
+                    state = np.expand_dims(states[t], axis=0)
+                    action = actions[t]
+                    G_t = G[t]
+                    actions_list.append(action)
+
+                    loss = self.update_policy(state, action, G_t, t)
+                    episode_loss += loss
+
+                    pbar.update(1)
+                    pbar.set_postfix({
+                        "Total Reward": G_t,
+                        "Agent Step": t,
+                        "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
+                    })
+                scores_list.append(G[-1])
+                print(episode_loss)
+                losses_per_episode.append(episode_loss)
+                pbar.close()
+
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         # Print metrics
         print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
