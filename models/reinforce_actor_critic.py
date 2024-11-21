@@ -45,8 +45,9 @@ class ReinforceActorCritic:
         baseline_losses_per_episode = []
 
         with open(
-                f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
-                "a") as file:
+            f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
+            "a",
+        ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
@@ -58,10 +59,12 @@ class ReinforceActorCritic:
                 baseline = self.baseline.predict(state, verbose=0)[0][0]
 
                 pbar = tqdm(
-                    total=max_steps, desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
+                    total=max_steps,
+                    desc=f"Episode {episode + 1}/ {episodes}",
+                    unit="Step",
                     bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                     postfix=f"total reward: 0, agent Step: {step_count}, Average Action Time: 0",
-                    dynamic_ncols=True
+                    dynamic_ncols=True,
                 )
                 agent_action_times = []
                 episode_policy_loss = 0
@@ -78,7 +81,10 @@ class ReinforceActorCritic:
                         else available_actions
                     )
 
-                    if hasattr(environment, "current_player") and environment.current_player == 1:
+                    if (
+                        hasattr(environment, "current_player")
+                        and environment.current_player == 1
+                    ):
                         action_start_time = time.time()
                         action = self.choose_action(state, keys)
                         action_end_time = time.time()
@@ -95,7 +101,11 @@ class ReinforceActorCritic:
                     )
                     next_state = np.expand_dims(next_state, axis=0)
 
-                    next_baseline = self.baseline.predict(next_state, verbose=0)[0][0] if not done else 0
+                    next_baseline = (
+                        self.baseline.predict(next_state, verbose=0)[0][0]
+                        if not done
+                        else 0
+                    )
                     delta = reward + (self.gamma * next_baseline) - baseline
 
                     baseline_loss = self.update_baseline(state, delta)
@@ -109,13 +119,17 @@ class ReinforceActorCritic:
                     baseline = next_baseline
 
                     pbar.update(1)
-                    pbar.set_postfix({
-                        "Reward": reward,
-                        "Agent Step": step_count,
-                        "Policy loss": policy_loss,
-                        "Baseline loss": baseline_loss,
-                        "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
-                    })
+                    pbar.set_postfix(
+                        {
+                            "Reward": reward,
+                            "Agent Step": step_count,
+                            "Policy loss": policy_loss,
+                            "Baseline loss": baseline_loss,
+                            "Average Action Time": np.mean(agent_action_times)
+                            if len(agent_action_times) > 0
+                            else 0,
+                        }
+                    )
 
                     if done:
                         episode_end_time = time.time()
@@ -129,15 +143,24 @@ class ReinforceActorCritic:
                 pbar.close()
 
             file.write("\nTraining Complete\n")
-            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(
+                f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
+            )
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         losses_per_episode.append(policy_losses_per_episode)
         losses_per_episode.append(baseline_losses_per_episode)
 
         # Print metrics
-        print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
-                      losses_per_episode)
+        print_metrics(
+            range(episodes),
+            scores_list,
+            episode_times,
+            action_times,
+            actions_list,
+            steps_per_game,
+            losses_per_episode,
+        )
 
     def test(self, environment, episodes, max_steps):
         win_games = 0
@@ -147,7 +170,9 @@ class ReinforceActorCritic:
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner = environment.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_games += 1
 
@@ -155,7 +180,10 @@ class ReinforceActorCritic:
                 while not environment.done and step_count < max_steps:
                     available_actions = environment.available_actions()
 
-                    if hasattr(environment, "current_player") and environment.current_player == 1:
+                    if (
+                        hasattr(environment, "current_player")
+                        and environment.current_player == 1
+                    ):
                         action = self.choose_action(state, available_actions)
                         step_count += 1
                     else:
@@ -177,7 +205,9 @@ class ReinforceActorCritic:
     def update_baseline(self, state, delta):
         with tf.GradientTape() as tape:
             baseline_values = self.baseline(state, training=True)
-            baseline_loss = tf.reduce_mean((baseline_values - (baseline_values + delta)) ** 2)
+            baseline_loss = tf.reduce_mean(
+                (baseline_values - (baseline_values + delta)) ** 2
+            )
 
         grads = tape.gradient(baseline_loss, self.baseline.trainable_variables)
 

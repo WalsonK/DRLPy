@@ -102,7 +102,13 @@ class DDQL:
 
         return loss
 
-    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
+    def train(
+        self,
+        env,
+        episodes=200,
+        max_steps=500,
+        test_intervals=[1000, 10_000, 100_000, 1000000],
+    ):
         """
         Entraîne l'agent et effectue des tests à des intervalles spécifiques, en enregistrant les résultats dans un fichier.
         Args:
@@ -118,7 +124,10 @@ class DDQL:
         action_list = []
 
         # Ouvrir le fichier pour écrire les résultats
-        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+        with open(
+            f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
+            "a",
+        ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
@@ -199,11 +208,17 @@ class DDQL:
                 pbar.close()
 
                 if (e + 1) in test_intervals:
-                    avg_score = self.test(env, episodes=100, max_steps=max_steps)  # Test sur 100 épisodes pour chaque palier
-                    file.write(f"Test after {e + 1} episodes: Average score: {avg_score}\n")
+                    avg_score = self.test(
+                        env, episodes=100, max_steps=max_steps
+                    )  # Test sur 100 épisodes pour chaque palier
+                    file.write(
+                        f"Test after {e + 1} episodes: Average score: {avg_score}\n"
+                    )
 
             file.write("\nTraining Complete\n")
-            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(
+                f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
+            )
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
             print_metrics(

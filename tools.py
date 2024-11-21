@@ -10,8 +10,15 @@ def random_player(env):
     return random.choice(available_actions)
 
 
-def print_metrics(episodes, scores=None, episode_times=None, action_times=None, actions=None, steps_per_game=None,
-                  losses=None):
+def print_metrics(
+    episodes,
+    scores=None,
+    episode_times=None,
+    action_times=None,
+    actions=None,
+    steps_per_game=None,
+    losses=None,
+):
     # scores metrics
     if scores:
         plt.plot(episodes, scores)
@@ -64,7 +71,9 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
 
     # Losses metrics
     if losses:
-        if isinstance(losses, list) and all(isinstance(sublist, list) for sublist in losses):
+        if isinstance(losses, list) and all(
+            isinstance(sublist, list) for sublist in losses
+        ):
             plt.plot(episodes, losses[0], label="Policy loss")
             plt.plot(episodes, losses[1], label="Baseline loss")
         else:

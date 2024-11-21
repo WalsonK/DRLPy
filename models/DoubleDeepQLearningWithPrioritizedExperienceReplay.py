@@ -233,8 +233,13 @@ class DDQLWithPER:
     def update_epsilon(self):
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
-
+    def train(
+        self,
+        env,
+        episodes=200,
+        max_steps=500,
+        test_intervals=[1000, 10_000, 100_000, 1000000],
+    ):
         scores_list = []
         losses_per_episode = []
         episode_times = []
@@ -242,8 +247,10 @@ class DDQLWithPER:
         action_list = []
         best_score = float("-inf")
 
-
-        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+        with open(
+            f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
+            "a",
+        ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
@@ -306,7 +313,9 @@ class DDQLWithPER:
                         dones = np.array([exp[4] for exp in batch])
 
                         current_q_values = self.main_model.predict(states, verbose=0)
-                        next_q_values_main = self.main_model.predict(next_states, verbose=0)
+                        next_q_values_main = self.main_model.predict(
+                            next_states, verbose=0
+                        )
                         next_q_values_target = self.target_model.predict(
                             next_states, verbose=0
                         )
@@ -327,7 +336,8 @@ class DDQLWithPER:
                             tf.multiply(
                                 is_weights,
                                 tf.reduce_mean(
-                                    tf.square(target_q_values - current_q_values), axis=1
+                                    tf.square(target_q_values - current_q_values),
+                                    axis=1,
                                 ),
                             )
                         ).numpy()
@@ -358,18 +368,26 @@ class DDQLWithPER:
                 pbar.close()
 
                 scores_list.append(total_reward)
-                losses_per_episode.append(np.mean(episode_losses) if episode_losses else 0)
+                losses_per_episode.append(
+                    np.mean(episode_losses) if episode_losses else 0
+                )
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
 
                 self.update_epsilon()
 
                 if (e + 1) in test_intervals:
-                    win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps)
-                    file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
+                    win_rate, avg_reward = self.test(
+                        env, episodes=200, max_steps=max_steps
+                    )
+                    file.write(
+                        f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
+                    )
 
             file.write("\nTraining Complete\n")
-            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(
+                f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
+            )
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
             print_metrics(
@@ -382,7 +400,13 @@ class DDQLWithPER:
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10, test_intervals=[1000, 10_000, 100_000, 1000000]):
+    def test(
+        self,
+        env,
+        episodes=200,
+        max_steps=10,
+        test_intervals=[1000, 10_000, 100_000, 1000000],
+    ):
         win_game = 0
         total_reward = 0
 

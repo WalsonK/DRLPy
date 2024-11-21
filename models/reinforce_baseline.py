@@ -40,15 +40,18 @@ class ReinforceBaseline:
         baseline_losses_per_episode = []
 
         with open(
-                f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
-                "a") as file:
+            f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
+            "a",
+        ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
             for episode in range(episodes):
                 # generate episode
                 start_time = time.time()
-                states, actions, rewards, agent_action_times = self.generate_episode(environment, max_steps)
+                states, actions, rewards, agent_action_times = self.generate_episode(
+                    environment, max_steps
+                )
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
                 action_times.append(np.mean(agent_action_times))
@@ -57,10 +60,12 @@ class ReinforceBaseline:
                 # Metrics
                 t = 0
                 pbar = tqdm(
-                    total=len(states), desc=f"Episode {episode + 1}/ {episodes}", unit="Step",
+                    total=len(states),
+                    desc=f"Episode {episode + 1}/ {episodes}",
+                    unit="Step",
                     bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                     postfix=f"total reward: 0, agent Step: {t}, Average Action Time: 0",
-                    dynamic_ncols=True
+                    dynamic_ncols=True,
                 )
 
                 # Calc cumulative reward
@@ -84,13 +89,17 @@ class ReinforceBaseline:
                     episode_baseline_loss += baseline_loss
 
                     pbar.update(1)
-                    pbar.set_postfix({
-                        "Total Reward": G_t,
-                        "Agent Step": t,
-                        "Policy loss": policy_loss,
-                        "Baseline loss": baseline_loss,
-                        "Average Action Time": np.mean(agent_action_times) if len(agent_action_times) > 0 else 0
-                    })
+                    pbar.set_postfix(
+                        {
+                            "Total Reward": G_t,
+                            "Agent Step": t,
+                            "Policy loss": policy_loss,
+                            "Baseline loss": baseline_loss,
+                            "Average Action Time": np.mean(agent_action_times)
+                            if len(agent_action_times) > 0
+                            else 0,
+                        }
+                    )
 
                 pbar.close()
                 scores_list.append(G[-1])
@@ -98,15 +107,24 @@ class ReinforceBaseline:
                 baseline_losses_per_episode.append(episode_baseline_loss)
 
             file.write("\nTraining Complete\n")
-            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(
+                f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
+            )
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         losses_per_episode.append(policy_losses_per_episode)
         losses_per_episode.append(baseline_losses_per_episode)
 
         # Print metrics
-        print_metrics(range(episodes), scores_list, episode_times, action_times, actions_list, steps_per_game,
-                      losses_per_episode)
+        print_metrics(
+            range(episodes),
+            scores_list,
+            episode_times,
+            action_times,
+            actions_list,
+            steps_per_game,
+            losses_per_episode,
+        )
 
     def test(self, environment, episodes, max_steps):
         win_games = 0
@@ -116,7 +134,9 @@ class ReinforceBaseline:
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner = environment.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_games += 1
 
@@ -124,7 +144,10 @@ class ReinforceBaseline:
                 while not environment.done and step_count < max_steps:
                     available_actions = environment.available_actions()
 
-                    if hasattr(environment, "current_player") and environment.current_player == 1:
+                    if (
+                        hasattr(environment, "current_player")
+                        and environment.current_player == 1
+                    ):
                         action = self.choose_action(state, available_actions)
                         step_count += 1
                     else:
@@ -142,6 +165,7 @@ class ReinforceBaseline:
         print(
             f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
         )
+
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []
         step_count = 0
@@ -157,7 +181,10 @@ class ReinforceBaseline:
                 else available_actions
             )
 
-            if hasattr(environment, "current_player") and environment.current_player == 1:
+            if (
+                hasattr(environment, "current_player")
+                and environment.current_player == 1
+            ):
                 start_time = time.time()
                 action = self.choose_action(state, keys)
                 end_time = time.time()
@@ -171,7 +198,10 @@ class ReinforceBaseline:
                 else environment.step(action)
             )
 
-            if hasattr(environment, "current_player") and environment.current_player == 1:
+            if (
+                hasattr(environment, "current_player")
+                and environment.current_player == 1
+            ):
                 states.append(state)
                 actions.append(action)
                 step_count += 1
@@ -208,7 +238,7 @@ class ReinforceBaseline:
 
         # Mise à jour manuelle de chaque variable de theta en appliquant le taux d'apprentissage
         for i, var in enumerate(self.theta.trainable_variables):
-            var.assign_add(self.learning_rate * (self.gamma ** t) * advantage * grads[i])
+            var.assign_add(self.learning_rate * (self.gamma**t) * advantage * grads[i])
 
         return loss.numpy()
 
@@ -220,7 +250,12 @@ class ReinforceBaseline:
         grads = tape.gradient(baseline_loss, self.baseline.trainable_variables)
 
         for i, var in enumerate(self.baseline.trainable_variables):
-            var.assign_sub(self.learning_rate * (self.gamma ** t) * (G_t - baseline_values).numpy()[0, 0] * grads[i])
+            var.assign_sub(
+                self.learning_rate
+                * (self.gamma**t)
+                * (G_t - baseline_values).numpy()[0, 0]
+                * grads[i]
+            )
 
         return baseline_loss.numpy()
 

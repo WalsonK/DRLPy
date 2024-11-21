@@ -69,14 +69,23 @@ class DQL:
         loss = history.history["loss"][0]
         return loss
 
-    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
+    def train(
+        self,
+        env,
+        episodes=200,
+        max_steps=500,
+        test_intervals=[1000, 10_000, 100_000, 1000000],
+    ):
         scores_list = []
         losses_per_episode = []
         episode_times = []
         agent_action_times = []
         action_list = []
 
-        with open(f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+        with open(
+            f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
+            "a",
+        ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
@@ -165,11 +174,17 @@ class DQL:
                 self.update_epsilon()
                 pbar.close()
                 if (e + 1) in test_intervals:
-                    win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps)
-                    file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
+                    win_rate, avg_reward = self.test(
+                        env, episodes=200, max_steps=max_steps
+                    )
+                    file.write(
+                        f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
+                    )
 
             file.write("\nTraining Complete\n")
-            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(
+                f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
+            )
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
         print_metrics(
