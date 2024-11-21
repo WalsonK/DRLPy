@@ -11,11 +11,12 @@ def random_player(env):
 
 
 def print_metrics(episodes, scores=None, episode_times=None, action_times=None, actions=None, steps_per_game=None,
-                  losses=None):
+                  losses=None, is_training: bool = True):
     # scores metrics
     if scores:
         plt.plot(episodes, scores)
-        plt.title("Evolution of scores per episode")
+        plt.title("Evolution of scores per episode in Training" if is_training
+                  else "Evolution of scores per episode in Test")
         plt.xlabel("Episodes")
         plt.ylabel("Score")
         plt.show()
@@ -24,7 +25,7 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
     # Episode times metrics
     if episode_times:
         plt.plot(episodes, episode_times)
-        plt.title("Evolution of episode time")
+        plt.title("Evolution of episode time in Training" if is_training else "Evolution of episode time in Test")
         plt.xlabel("Episodes")
         plt.ylabel("Time (s)")
         plt.show()
@@ -33,7 +34,8 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
     # Average Action time
     if action_times:
         plt.plot(episodes, action_times)
-        plt.title("Evolution of action mean time per episode")
+        plt.title("Evolution of action mean time per episode in Training" if is_training
+                  else "Evolution of action mean time per episode in Test")
         plt.xlabel("Episodes")
         plt.ylabel("Average action time (s)")
         plt.show()
@@ -44,7 +46,8 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
         counts = Counter(actions)
         plt.figure(figsize=(14, 10))
         plt.barh(list(counts.keys()), list(counts.values()))
-        plt.title("Distribution of action take by the agent")
+        plt.title("Distribution of action take by the agent in Training" if is_training
+                  else "Distribution of action take by the agent in Test")
         plt.xlabel("Counts")
         plt.ylabel("Action")
         plt.yticks(ticks=list(counts.keys()))
@@ -56,7 +59,8 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
     # Agent step per game
     if steps_per_game:
         plt.plot(episodes, steps_per_game)
-        plt.title("Evolution of agent step per episode")
+        plt.title("Evolution of agent step per episode in Training" if is_training
+                  else "Evolution of agent step per episode in Test")
         plt.xlabel("Episodes")
         plt.ylabel("Nombre de step")
         plt.show()
@@ -69,7 +73,8 @@ def print_metrics(episodes, scores=None, episode_times=None, action_times=None, 
             plt.plot(episodes, losses[1], label="Baseline loss")
         else:
             plt.plot(losses)
-        plt.title("Losses evolution per episode")
+        plt.title("Losses evolution per episode in Training" if is_training
+                  else "Losses evolution per episode in Test")
         plt.xlabel("Episodes")
         plt.ylabel("Losses")
         plt.show()
