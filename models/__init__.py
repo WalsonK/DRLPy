@@ -16,5 +16,5 @@ __all__ = [
     "Reinforce",
     "ReinforceBaseline",
     "ReinforceActorCritic",
-    "PPO"
+    "PPO",
 ]

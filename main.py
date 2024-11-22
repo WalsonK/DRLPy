@@ -170,12 +170,12 @@ if __name__ == "__main__":
     else:
         max_step = 300
 
-    episode = 1000
+    episode = 10
 
     if mode == "train":
         score = agent.train(game, episodes=episode, max_steps=max_step)
         print(f"Trained Mean score: {score}")
-        # agent.save_model(game_name)
+        agent.save_model(game_name)
         agent.test(game, episodes=episode, max_steps=max_step)
     elif mode == "test":
         agent.load_model(game_name)
