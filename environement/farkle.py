@@ -132,8 +132,8 @@ class Farkle:
         if self.printify:
             self.print_dice(self.dice_list)
         if self.remaining_dice == 6 and (
-            self.check_straight(self.dice_list)
-            or self.check_three_pairs(self.dice_list)
+                self.check_straight(self.dice_list)
+                or self.check_three_pairs(self.dice_list)
         ):
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
@@ -385,7 +385,7 @@ class Farkle:
         return action, end_time - start_time
 
     def play_game(
-        self, isBotGame=False, show=False, agentPlayer=None, agentOpponent=None
+            self, isBotGame=False, show=False, agentPlayer=None, agentOpponent=None
     ):
         def solo_round(isb):
             if self.current_player == 1:
@@ -401,8 +401,8 @@ class Farkle:
                     return None, None
                 else:
                     if agentPlayer is not None:
-                        action, action_time = self.bot_turn(agent=agentPlayer)
-                        return action, action_time
+                        a, t = self.bot_turn(agent=agentPlayer)
+                        return a, t
                     else:
                         self.bot_turn()
                         return None, None
@@ -424,7 +424,7 @@ class Farkle:
         action_list = []
         while all(s <= self.winning_score for s in self.scores):
             action, action_time = solo_round(isBotGame)
-            if action and action_time:
+            if action is not None and action_time is not None:
                 action_list.append(action)
                 action_times.append(action_time)
         if any(s <= self.winning_score for s in self.scores):
