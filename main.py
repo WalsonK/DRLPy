@@ -50,13 +50,12 @@ def select_agent():
                 "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
                 "4 - DQN With Replay\n"
                 "5 - Reinforce\n"
-                "6 - Reinforce with actor critic\n"
-                "7 - Reinforce with baseline\n"
+                "6 - Reinforce with baseline\n"
+                "7 - Reinforce with actor critic\n"
                 "> "
             )
         )
     )
-    model = None
     if agent_name == 1:
         model = models.DQL(state_size, action_size)
     elif agent_name == 2:
@@ -68,9 +67,9 @@ def select_agent():
     elif agent_name == 5:
         model = models.Reinforce(state_size, action_size)
     elif agent_name == 6:
-        model = models.ReinforceActorCritic(state_size, action_size)
-    elif agent_name == 7:
         model = models.ReinforceBaseline(state_size, action_size)
+    elif agent_name == 7:
+        model = models.ReinforceActorCritic(state_size, action_size)
     else:
         model = models.DQL(state_size, action_size)
     return model
