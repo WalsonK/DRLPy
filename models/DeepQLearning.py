@@ -243,10 +243,10 @@ class DQL:
         win_rate = win_game / episodes
         return win_rate, avg_reward
 
-    def save_model(self, model_name):
+    def save_model(self, game_name):
         """Save model and parameters"""
-        os.makedirs("saved_models", exist_ok=True)
-        model_path = f"saved_models/{model_name}.h5"
+        os.makedirs("agents", exist_ok=True)
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
         self.model.save(model_path)
 
         # Save additional parameters
@@ -260,15 +260,15 @@ class DQL:
             "epsilon_decay": self.epsilon_decay,
         }
 
-        with open(f"saved_models/{model_name}_params.pkl", "wb") as f:
+        with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
             pickle.dump(params, f)
 
-        print(f"Model and parameters saved as '{model_name}'.")
+        print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")
 
-    def load_model(self, model_name):
+    def load_model(self, game_name):
         """Load model and parameters"""
-        model_path = f"saved_models/{model_name}.h5"
-        params_path = f"saved_models/{model_name}_params.pkl"
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
+        params_path = f"agents/{self.__class__.__name__}_{game_name}._params.pkl"
 
         if os.path.exists(model_path) and os.path.exists(params_path):
             self.model = tf.keras.models.load_model(model_path)
@@ -284,6 +284,6 @@ class DQL:
             self.epsilon_min = params["epsilon_min"]
             self.epsilon_decay = params["epsilon_decay"]
 
-            print(f"Model and parameters loaded from '{model_name}'.")
+            print(f"Agent {self.__class__.__name__} pour le jeu {game_name} chargé.")
         else:
-            print(f"No saved model found with the name '{model_name}'.")
+            print(f"Aucun agent sauvegardé pour le jeu {game_name} trouvé.")
