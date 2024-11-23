@@ -17,16 +17,16 @@ from tools import *
 
 class DQN_with_replay:
     def __init__(
-        self,
-        state_size,
-        action_size,
-        learning_rate=0.01,
-        gamma=0.95,
-        epsilon=1.0,
-        epsilon_min=0.01,
-        epsilon_decay=0.995,
-        batch_size=64,
-        memory_size=2000,
+            self,
+            state_size,
+            action_size,
+            learning_rate=0.01,
+            gamma=0.95,
+            epsilon=1.0,
+            epsilon_min=0.01,
+            epsilon_decay=0.995,
+            batch_size=64,
+            memory_size=2000,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -118,7 +118,7 @@ class DQN_with_replay:
                     unit="Step",
                     bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                     postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                    f"Average Action Time: 0",
+                            f"Average Action Time: 0",
                     dynamic_ncols=True,
                 )
 
@@ -202,30 +202,47 @@ class DQN_with_replay:
             episode_times=episode_times,
             losses=losses_per_episode,
             actions=action_list,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
         )
 
         return np.mean(scores_list)
 
     def test(self, env, episodes=200, max_steps=10):
+        scores_list = []
+        episode_times = []
+        action_times = []
+        actions_list = []
         win_game = 0
         total_reward = 0
         for e in trange(episodes, desc=f"Test"):
+            episode_start_time = time.time()
+            episode_action_times = []
+
             state = env.reset()
             done = False
             step_count = 0
             episode_reward = 0
 
             if isinstance(env, Farkle):
-                winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_game += 1
+                episode_end_time = time.time()
+                actions_list = a_list
+                episode_action_times = a_times
+                scores_list.append(reward)
 
             else:
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
 
                     if hasattr(env, "current_player") and env.current_player == 1:
+                        action_start_time = time.time()
                         action = self.choose_action(state, available_actions)
+                        action_end_time = time.time()
+                        episode_action_times.append(action_end_time - action_start_time)
+                        actions_list.append(action)
                         step_count += 1
                     else:
                         action = random.choice(available_actions)
@@ -239,14 +256,30 @@ class DQN_with_replay:
                         break
 
                 total_reward += episode_reward
+                episode_end_time = time.time()
 
                 if not done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+
+            action_times.append(np.mean(episode_action_times))
+            episode_times.append(episode_end_time - episode_start_time)
+
         avg_reward = total_reward / episodes
         print(
             f"Winrate:\n- {win_game} game wined\n- {episodes} game played\n- Accuracy : {(win_game / episodes) * 100:.2f}%"
         )
         win_rate = win_game / episodes
+        # Print metrics
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            action_times=action_times,
+            actions=actions_list,
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
+        )
         return win_rate, avg_reward
 
     def save_model(self, game_name):
@@ -268,7 +301,7 @@ class DQN_with_replay:
         }
 
         with open(
-            f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
+                f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
         ) as f:
             pickle.dump(params, f)
 

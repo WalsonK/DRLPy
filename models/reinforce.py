@@ -109,23 +109,33 @@ class Reinforce:
             actions_list,
             steps_per_game,
             losses_per_episode,
+            algo_name=self.__class__.__name__,
+            env_name=environment.__class__.__name__
         )
 
         return np.mean(scores_list)
 
     def test(self, environment, episodes, max_steps):
+        scores_list = []
+        episode_times = []
+        action_times = []
+        actions_list = []
         win_games = 0
         for e in trange(episodes, desc="Testing", unit="episode"):
+            episode_start_time = time.time()
+            episode_action_times = []
             state = environment.reset()
             done = False
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner = environment.play_game(
-                    isBotGame=True, show=False, agentPlayer=self
-                )
+                winner, reward, a_list, a_times = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_games += 1
+                episode_end_time = time.time()
+                actions_list = a_list
+                episode_action_times = a_times
+                scores_list.append(reward)
 
             else:
                 while not environment.done and step_count < max_steps:
@@ -135,7 +145,11 @@ class Reinforce:
                         hasattr(environment, "current_player")
                         and environment.current_player == 1
                     ):
+                        action_start_time = time.time()
                         action = self.choose_action(state, available_actions)
+                        action_end_time = time.time()
+                        episode_action_times.append(action_end_time - action_start_time)
+                        actions_list.append(action)
                         step_count += 1
                     else:
                         action = random.choice(available_actions)
@@ -147,10 +161,26 @@ class Reinforce:
                         win_games += 1
                         break
 
+                episode_end_time = time.time()
                 if not done and step_count >= max_steps:
+                    scores_list.append(environment.get_score())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+
+            action_times.append(np.mean(episode_action_times))
+            episode_times.append(episode_end_time - episode_start_time)
         print(
             f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
+        )
+        # Print metrics
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            action_times=action_times,
+            actions=actions_list,
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=environment.__class__.__name__
         )
 
     def generate_episode(self, environment, max_step):
@@ -263,11 +293,11 @@ class Reinforce:
             self.gamma = params["gamma"]
 
 
-# _env = Farkle(printing=False)
-# _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
+#_env = Farkle(printing=False)
+#_model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
 
-# _model.train(environment=_env, episodes=2, max_steps=300)
-# _model.test(environment=_env, episodes=10, max_steps=200)
+#_model.train(environment=_env, episodes=2, max_steps=300)
+#_model.test(environment=_env, episodes=10, max_steps=200)
 # name = "farkle_test_save_load"
 # _model.save_model(name)
 # model_test = Reinforce(4, 4, learning_rate=10)

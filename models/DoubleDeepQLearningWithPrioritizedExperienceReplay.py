@@ -396,6 +396,8 @@ class DDQLWithPER:
                 episode_times=episode_times,
                 losses=losses_per_episode,
                 actions=action_list,
+                algo_name=self.__class__.__name__,
+                env_name=env.__class__.__name__
             )
 
         return np.mean(scores_list)
@@ -407,24 +409,39 @@ class DDQLWithPER:
         max_steps=10,
         test_intervals=[1000, 10_000, 100_000, 1000000],
     ):
+        scores_list = []
+        episode_times = []
+        action_times = []
+        actions_list = []
         win_game = 0
         total_reward = 0
 
         for e in tqdm(range(episodes), desc="Testing"):
+            episode_start_time = time.time()
+            episode_action_times = []
             state = env.reset()
             episode_reward = 0
             step_count = 0
 
             if hasattr(env, "play_game"):
-                winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
                 if winner == 0:
                     win_game += 1
+                episode_end_time = time.time()
+                actions_list = a_list
+                episode_action_times = a_times
+                scores_list.append(reward)
+
             else:
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
 
                     if hasattr(env, "current_player") and env.current_player == 1:
+                        action_start_time = time.time()
                         action = self.choose_action(state, available_actions)
+                        action_end_time = time.time()
+                        episode_action_times.append(action_end_time - action_start_time)
+                        actions_list.append(action)
                         step_count += 1
                     else:
                         action = np.random.choice(available_actions)
@@ -438,6 +455,10 @@ class DDQLWithPER:
                         break
 
                 total_reward += episode_reward
+                episode_end_time = time.time()
+
+            action_times.append(np.mean(episode_action_times))
+            episode_times.append(episode_end_time - episode_start_time)
 
         avg_reward = total_reward / episodes
         print(
@@ -447,6 +468,17 @@ class DDQLWithPER:
             f"- Average reward per episode: {avg_reward:.2f}"
         )
         win_rate = win_game / episodes
+        # Print metrics
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            action_times=action_times,
+            actions=actions_list,
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
+        )
         return win_rate, avg_reward
 
     def save_model(self, game_name):

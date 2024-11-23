@@ -9,8 +9,15 @@ import models
 
 
 # Game selection logic
-def select_game(name):
+def select_game():
     """Set the environment from the user input"""
+    name = (
+        input(
+            "Enter the game you want to play (tictactoe/gridworld/farkle/lineworld): \n> "
+        )
+        .strip()
+        .lower()
+    )
     if name == "tictactoe":
         env = TicTacToe()
         s_size = 9
@@ -29,7 +36,45 @@ def select_game(name):
         a_size = env.actions_size
     else:
         raise ValueError("Unknown game")
-    return env, s_size, a_size
+    return env, name, s_size, a_size
+
+
+def select_agent():
+    """Set the agent from the user input"""
+    agent_name = (
+        int(
+            input(
+                "Enter the index of the agent:\n"
+                "1 - Deep QLearning\n"
+                "2 - Double Deep QLearning\n"
+                "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
+                "4 - DQN With Replay\n"
+                "5 - Reinforce\n"
+                "6 - Reinforce with baseline\n"
+                "7 - Reinforce with actor critic\n"
+                "> "
+            )
+        )
+    )
+    if agent_name == 1:
+        model = models.DQL(state_size, action_size)
+    elif agent_name == 2:
+        model = models.DDQL(state_size, action_size)
+    elif agent_name == 3:
+        model = models.DDQLWithPER(state_size, action_size)
+    elif agent_name == 4:
+        model = models.DQN_with_replay(state_size, action_size)
+    elif agent_name == 5:
+        model = models.Reinforce(state_size, action_size)
+    elif agent_name == 6:
+        model = models.ReinforceBaseline(state_size, action_size)
+    elif agent_name == 7:
+        model = models.ReinforceActorCritic(state_size, action_size)
+    elif agent_name == 8:
+        model = models.PPO(state_size, action_size)
+    else:
+        model = models.DQL(state_size, action_size)
+    return model
 
 
 def random_player(env):
@@ -112,57 +157,35 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-if __name__ == "__main__":
-    game_name = (
-        input(
-            "Enter the game you want to play (tictactoe/gridworld/farkle/lineworld): "
-        )
-        .strip()
-        .lower()
-    )
-    game, state_size, action_size = select_game(game_name)
+def train_agent(model, env, name, max_steps, episodes):
+    """Train the agent"""
+    print(f"Starting training with {model.__class__.__name__}")
+    r = model.train(env, episodes=episodes, max_steps=max_steps)
+    print(f"Trained Mean score: {r}")
+    model.test(env, episodes=episodes, max_steps=max_steps)
 
-    mode = (
-        input("Do you want to play, train, or test? (play/train/test): ")
-        .strip()
-        .lower()
-    )
+    if input("Do you want to save the model? (y/n): \n> ").strip().lower() == "y":
+        model.save_model(name)
+
+    if input(f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> ").strip().lower() == "y":
+        simulate_game(env, model=model, manual=True)
+
+
+def test_agent(model, env, name, max_steps, episodes):
+    """Test the agent"""
+    agent.load_model(name)
+    agent.test(env, episodes=episodes, max_steps=max_steps)
+    if input(f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> ").strip().lower() == "y":
+        simulate_game(env, model=model, manual=True)
+
+
+if __name__ == "__main__":
+    game, game_name, state_size, action_size = select_game()
+
+    mode = input("Do you want to play, train, or test? (play/train/test): \n> ").strip().lower()
     manual = mode == "play"
 
-    agent = None
-    if mode == "train":
-        agent_name = int(
-            input(
-                "Enter the name of the agent:\n"
-                "1 - Deep QLearning\n"
-                "2 - Double Deep QLearning\n"
-                "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
-                "4 - DQN With Replay\n"
-                "5 - Reinforce\n"
-                "6 - Reinforce with actor critic\n"
-                "7 - Reinforce with baseline\n"
-                "8 - PPO\n"
-            )
-        )
-        if agent_name == 1:
-            agent = models.DQL(state_size, action_size)
-        elif agent_name == 2:
-            agent = models.DDQL(state_size, action_size)
-        elif agent_name == 3:
-            agent = models.DDQLWithPER(state_size, action_size)
-        elif agent_name == 4:
-            agent = models.DQN_with_replay(state_size, action_size)
-        elif agent_name == 5:
-            agent = models.Reinforce(state_size, action_size)
-        elif agent_name == 6:
-            agent = models.ReinforceActorCritic(state_size, action_size)
-        elif agent_name == 7:
-            agent = models.ReinforceBaseline(state_size, action_size)
-        elif agent_name == 8:
-            agent = models.PPO(state_size, action_size)
-        else:
-            agent = models.DQL(state_size, action_size)
-
+    episode = 2
     if game_name == "gridworld":
         max_step = 10
     elif game_name == "lineworld":
@@ -170,17 +193,14 @@ if __name__ == "__main__":
     else:
         max_step = 300
 
-    episode = 10
-
     if mode == "train":
-        score = agent.train(game, episodes=episode, max_steps=max_step)
-        print(f"Trained Mean score: {score}")
-        agent.save_model(game_name)
-        agent.test(game, episodes=episode, max_steps=max_step)
+        episode = int(input("How many episodes you want to train?: \n> "))
+        agent = select_agent()
+        train_agent(agent, game, game_name, max_step, episode)
     elif mode == "test":
-        agent.load_model(game_name)
-        agent.test(game, episodes=episode, max_steps=max_step)
-        simulate_game(game, model=agent, manual=True)
+        episode = int(input("How many episodes you want to test?: \n> "))
+        agent = select_agent()
+        test_agent(agent, game, game_name, max_step, episode)
     elif game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
         simulate_game(game, model=None, manual=True)

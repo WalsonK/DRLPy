@@ -132,8 +132,8 @@ class Farkle:
         if self.printify:
             self.print_dice(self.dice_list)
         if self.remaining_dice == 6 and (
-            self.check_straight(self.dice_list)
-            or self.check_three_pairs(self.dice_list)
+                self.check_straight(self.dice_list)
+                or self.check_three_pairs(self.dice_list)
         ):
             score, _ = self.calculate_score(self.dice_list)
             self.current_turn_score += score
@@ -370,18 +370,22 @@ class Farkle:
             print(f"Current turn score : {self.current_turn_score}")
         av_actions = self.available_actions()
         keys = list(av_actions.keys())
+        start_time = time.time()
         action = (
             agent.choose_action(self.get_state(), keys)
             if agent
             else random.choice(keys)
         )
+        end_time = time.time()
         if self.printify:
             self.print_available_actions(av_actions)
             print(f"Player {self.current_player} choose action {action}")
         self.step(av_actions[action])
 
+        return action, end_time - start_time
+
     def play_game(
-        self, isBotGame=False, show=False, agentPlayer=None, agentOpponent=None
+            self, isBotGame=False, show=False, agentPlayer=None, agentOpponent=None
     ):
         def solo_round(isb):
             if self.current_player == 1:
@@ -394,16 +398,21 @@ class Farkle:
                         self.print_available_actions(av_actions)
                     choice = int(input("> "))
                     self.step(av_actions[choice])
+                    return None, None
                 else:
                     if agentPlayer is not None:
-                        self.bot_turn(agent=agentPlayer)
+                        a, t = self.bot_turn(agent=agentPlayer)
+                        return a, t
                     else:
                         self.bot_turn()
+                        return None, None
             else:
                 if agentOpponent is not None:
                     self.bot_turn(agent=agentOpponent)
+                    return None, None
                 else:
                     self.bot_turn()
+                    return None, None
 
         if show:
             self.printify = True
@@ -411,19 +420,29 @@ class Farkle:
         if self.printify:
             print(f"Game Score : {self.scores} ")
         self.roll_dice()
+        action_times = []
+        action_list = []
         while all(s <= self.winning_score for s in self.scores):
-            solo_round(isBotGame)
+            action, action_time = solo_round(isBotGame)
+            if action is not None and action_time is not None:
+                action_list.append(action)
+                action_times.append(action_time)
         if any(s <= self.winning_score for s in self.scores):
             solo_round(isBotGame)
+            action, action_time = solo_round(isBotGame)
+            if action and action_time:
+                action_list.append(action)
+                action_times.append(action_time)
 
         self.done = True
         self.winner = 0 if self.scores[0] > self.scores[1] else 1
         winner = self.winner
+        reward = self.get_reward()
         if self.printify:
             print(f"Game Score : {self.scores} ")
             print(f"Player {self.winner} won :)")
         self.reset()
-        return winner
+        return winner, reward, action_list, action_times
 
     def print_dice(self, dlist):
         # Display dices
