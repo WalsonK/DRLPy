@@ -15,7 +15,7 @@ class PPO:
         self,
         state_size: int,
         action_size: int,
-        learning_rate: float = 3e-4,
+        learning_rate: float = 0.01,
         gamma: float = 0.99,
         lam: float = 0.95,
         epsilon_clip: float = 0.2,
@@ -146,8 +146,9 @@ class PPO:
 
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
-
+                    start_time = time.time()
                     action = self.choose_action(state, available_actions)
+                    end_time = time.time()
 
                     value = self.value_network.predict(state.reshape(1, -1), verbose=0)[
                         0
@@ -169,6 +170,7 @@ class PPO:
                     dones.append(done)
                     values.append(value)
                     log_probs.append(log_prob)
+                    agent_action_times.append(end_time - start_time)
 
                     step_count += 1
                     total_reward += reward
