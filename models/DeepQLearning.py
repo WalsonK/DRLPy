@@ -178,6 +178,8 @@ class DQL:
             episode_times=episode_times,
             losses=losses_per_episode,
             actions=action_list,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
         )
 
         return np.mean(scores_list)
@@ -249,7 +251,9 @@ class DQL:
             episode_times=episode_times,
             action_times=action_times,
             actions=actions_list,
-            is_training=False
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
         )
         win_rate = win_game / episodes
         return win_rate, avg_reward

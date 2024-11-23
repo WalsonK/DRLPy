@@ -143,7 +143,9 @@ class ReinforceActorCritic:
             action_times,
             actions_list,
             steps_per_game,
-            losses_per_episode
+            losses_per_episode,
+            algo_name=self.__class__.__name__,
+            env_name=environment.__class__.__name__
         )
         return np.mean(scores_list)
 
@@ -206,7 +208,9 @@ class ReinforceActorCritic:
             episode_times=episode_times,
             action_times=action_times,
             actions=actions_list,
-            is_training=False
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=environment.__class__.__name__
         )
 
     def update_baseline(self, state, delta):
