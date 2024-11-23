@@ -52,6 +52,7 @@ def select_agent():
                 "5 - Reinforce\n"
                 "6 - Reinforce with baseline\n"
                 "7 - Reinforce with actor critic\n"
+                "8 - PPO\n"
                 "> "
             )
         )

@@ -234,6 +234,8 @@ class PPO:
             episode_times=episode_times,
             losses=losses_per_episode,
             actions=action_list,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
         )
 
         return np.mean(scores_list)
