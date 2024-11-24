@@ -15,7 +15,7 @@ class PPO:
         self,
         state_size: int,
         action_size: int,
-        learning_rate: float = 0.001,
+        learning_rate: float = 0.01,
         gamma: float = 0.99,
         lam: float = 0.95,
         epsilon_clip: float = 0.2,
@@ -104,10 +104,10 @@ class PPO:
         test_intervals=[1000, 10_000, 100_000, 1000000],
     ):
         scores_list = []
-        losses_per_episode = []
         episode_times = []
         agent_action_times = []
         action_list = []
+        step_by_episode = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -189,17 +189,11 @@ class PPO:
 
                     if env.done:
                         scores_list.append(total_reward)
-                        losses_per_episode.append(
-                            np.mean(episode_losses) if episode_losses else 0
-                        )
                         break
 
                 if not env.done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
                     scores_list.append(total_reward)
-                    losses_per_episode.append(
-                        np.mean(episode_losses) if episode_losses else 0
-                    )
 
                 pbar.close()
 
@@ -211,6 +205,7 @@ class PPO:
 
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
+                step_by_episode.append(step_count)
 
                 self._update_networks(states, actions, advantages, returns, log_probs)
 
@@ -232,7 +227,7 @@ class PPO:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            losses=losses_per_episode,
+            steps_per_game=step_by_episode,
             actions=action_list,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
@@ -332,6 +327,7 @@ class PPO:
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
 
@@ -379,6 +375,7 @@ class PPO:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
 
         avg_reward = total_reward / episodes
         print(
@@ -392,12 +389,12 @@ class PPO:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
-            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
+        return win_game / episodes, avg_reward
 
     def save_model(self, game_name):
         try:

@@ -97,7 +97,8 @@ class DQN_with_replay:
         losses_per_episode = []
         episode_times = []
         agent_action_times = []
-        action_list = []
+        actions_list = []
+        step_by_episode = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -138,7 +139,7 @@ class DQN_with_replay:
                         action = self.choose_action(state, keys)
                         action_end_time = time.time()
                         agent_action_times.append(action_end_time - action_start_time)
-                        action_list.append(action)
+                        actions_list.append(action)
                         step_count += 1
                     else:
                         action = random.choice(keys)
@@ -171,7 +172,7 @@ class DQN_with_replay:
 
                 episode_duration = time.time() - start_time
                 episode_times.append(episode_duration)
-
+                step_by_episode.append(step_count)
                 episode_loss = self.replay()
                 losses_per_episode.append(episode_loss)
 
@@ -200,8 +201,9 @@ class DQN_with_replay:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
+            steps_per_game=step_by_episode,
             losses=losses_per_episode,
-            actions=action_list,
+            actions=actions_list,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
@@ -213,6 +215,7 @@ class DQN_with_replay:
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
         for e in trange(episodes, desc=f"Test"):
@@ -265,6 +268,7 @@ class DQN_with_replay:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
 
         avg_reward = total_reward / episodes
         print(
@@ -276,9 +280,8 @@ class DQN_with_replay:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
-            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )

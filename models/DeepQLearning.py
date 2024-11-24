@@ -81,6 +81,7 @@ class DQL:
         episode_times = []
         agent_action_times = []
         action_list = []
+        step_by_episode = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -155,21 +156,18 @@ class DQL:
                     )
 
                     if env.done:
-                        scores_list.append(total_reward)
-                        losses_per_episode.append(
-                            np.mean(episode_losses) if episode_losses else 0
-                        )
                         break
 
                 if not env.done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-                    scores_list.append(total_reward)
-                    losses_per_episode.append(
-                        np.mean(episode_losses) if episode_losses else 0
-                    )
 
+                losses_per_episode.append(
+                    np.mean(episode_losses) if episode_losses else 0
+                )
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
+                step_by_episode.append(step_count)
+                scores_list.append(total_reward)
 
                 self.update_epsilon()
                 pbar.close()
@@ -192,6 +190,7 @@ class DQL:
             scores=scores_list,
             episode_times=episode_times,
             losses=losses_per_episode,
+            steps_per_game=step_by_episode,
             actions=action_list,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
@@ -204,6 +203,7 @@ class DQL:
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
         for e in tqdm(range(episodes), desc="Testing"):
@@ -254,6 +254,7 @@ class DQL:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
         avg_reward = total_reward / episodes
         print(
             f"Test Results:\n"
@@ -266,9 +267,8 @@ class DQL:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
-            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )

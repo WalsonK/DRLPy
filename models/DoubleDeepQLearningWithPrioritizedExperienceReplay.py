@@ -246,6 +246,7 @@ class DDQLWithPER:
         agent_action_times = []
         action_list = []
         best_score = float("-inf")
+        step_by_episode = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -373,6 +374,7 @@ class DDQLWithPER:
                 )
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
+                step_by_episode.append(step_count)
 
                 self.update_epsilon()
 
@@ -395,6 +397,7 @@ class DDQLWithPER:
                 scores=scores_list,
                 episode_times=episode_times,
                 losses=losses_per_episode,
+                steps_per_game=step_by_episode,
                 actions=action_list,
                 algo_name=self.__class__.__name__,
                 env_name=env.__class__.__name__,
@@ -413,6 +416,7 @@ class DDQLWithPER:
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
 
@@ -461,6 +465,7 @@ class DDQLWithPER:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
 
         avg_reward = total_reward / episodes
         print(
@@ -475,9 +480,8 @@ class DDQLWithPER:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
-            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
