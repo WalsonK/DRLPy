@@ -110,7 +110,7 @@ class Reinforce:
             steps_per_game,
             losses_per_episode,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
         )
 
         return np.mean(scores_list)
@@ -129,7 +129,9 @@ class Reinforce:
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner, reward, a_list, a_times = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = environment.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_games += 1
                 episode_end_time = time.time()
@@ -180,7 +182,7 @@ class Reinforce:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
         )
         self.save_model(environment.__class__.__name__)
 
@@ -294,11 +296,11 @@ class Reinforce:
             self.gamma = params["gamma"]
 
 
-#_env = Farkle(printing=False)
-#_model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
+# _env = Farkle(printing=False)
+# _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
 
-#_model.train(environment=_env, episodes=2, max_steps=300)
-#_model.test(environment=_env, episodes=10, max_steps=200)
+# _model.train(environment=_env, episodes=2, max_steps=300)
+# _model.test(environment=_env, episodes=10, max_steps=200)
 # name = "farkle_test_save_load"
 # _model.save_model(name)
 # model_test = Reinforce(4, 4, learning_rate=10)

@@ -41,20 +41,19 @@ def select_game():
 
 def select_agent():
     """Set the agent from the user input"""
-    agent_name = (
-        int(
-            input(
-                "Enter the index of the agent:\n"
-                "1 - Deep QLearning\n"
-                "2 - Double Deep QLearning\n"
-                "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
-                "4 - DQN With Replay\n"
-                "5 - Reinforce\n"
-                "6 - Reinforce with baseline\n"
-                "7 - Reinforce with actor critic\n"
-                "8 - PPO\n"
-                "> "
-            )
+    agent_name = int(
+        input(
+            "Enter the index of the agent:\n"
+            "1 - Deep QLearning\n"
+            "2 - Double Deep QLearning\n"
+            "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
+            "4 - DQN With Replay\n"
+            "5 - Reinforce\n"
+            "6 - Reinforce with baseline\n"
+            "7 - Reinforce with actor critic\n"
+            "8 - PPO\n"
+            "9 - RandomRollout\n"
+            "> "
         )
     )
     if agent_name == 1:
@@ -73,6 +72,8 @@ def select_agent():
         model = models.ReinforceActorCritic(state_size, action_size)
     elif agent_name == 8:
         model = models.PPO(state_size, action_size)
+    elif agent_name == 9:
+        model = models.RandomRollout(state_size, action_size)
     else:
         model = models.DQL(state_size, action_size)
     return model
@@ -168,7 +169,14 @@ def train_agent(model, env, name, max_steps, episodes):
     if input("Do you want to save the model? (y/n): \n> ").strip().lower() == "y":
         model.save_model(name)
 
-    if input(f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> ").strip().lower() == "y":
+    if (
+        input(
+            f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
+        )
+        .strip()
+        .lower()
+        == "y"
+    ):
         simulate_game(env, model=model, manual=True)
 
 
@@ -176,14 +184,25 @@ def test_agent(model, env, name, max_steps, episodes):
     """Test the agent"""
     agent.load_model(name)
     agent.test(env, episodes=episodes, max_steps=max_steps)
-    if input(f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> ").strip().lower() == "y":
+    if (
+        input(
+            f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
+        )
+        .strip()
+        .lower()
+        == "y"
+    ):
         simulate_game(env, model=model, manual=True)
 
 
 if __name__ == "__main__":
     game, game_name, state_size, action_size = select_game()
 
-    mode = input("Do you want to play, train, or test? (play/train/test): \n> ").strip().lower()
+    mode = (
+        input("Do you want to play, train, or test? (play/train/test): \n> ")
+        .strip()
+        .lower()
+    )
     manual = mode == "play"
 
     episode = 2
@@ -192,7 +211,7 @@ if __name__ == "__main__":
     elif game_name == "lineworld":
         max_step = 5
     else:
-        max_step = 300
+        max_step = 400
 
     if mode == "train":
         episode = int(input("How many episodes you want to train?: \n> "))

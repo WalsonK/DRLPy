@@ -122,6 +122,7 @@ class DDQL:
         episode_times = []
         agent_action_times = []
         action_list = []
+        step_by_episode = []
 
         # Ouvrir le fichier pour écrire les résultats
         with open(
@@ -181,7 +182,6 @@ class DDQL:
                         next_state, reward, done = env.step(action)
 
                     loss = self.learn(state, action, reward, next_state, done)
-                    episode_losses.append(loss)
 
                     state = next_state
                     total_reward += reward
@@ -199,10 +199,16 @@ class DDQL:
                     if env.done:
                         break
 
+                if not env.done and step_count >= max_steps:
+                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
                 scores_list.append(total_reward)
                 losses_per_episode.append(np.mean(episode_losses))
+                step_by_episode.append(step_count)
+                print(step_by_episode)
+                episode_losses.append(loss)
 
                 self.update_epsilon()
                 pbar.close()
@@ -226,9 +232,10 @@ class DDQL:
                 scores=scores_list,
                 episode_times=episode_times,
                 losses=losses_per_episode,
+                steps_per_game=step_by_episode,
                 actions=action_list,
                 algo_name=self.__class__.__name__,
-                env_name=env.__class__.__name__
+                env_name=env.__class__.__name__,
             )
 
         return np.mean(scores_list)
@@ -238,6 +245,7 @@ class DDQL:
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
 
@@ -249,7 +257,9 @@ class DDQL:
             step_count = 0
 
             if hasattr(env, "play_game"):
-                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_game += 1
                 episode_end_time = time.time()
@@ -283,6 +293,7 @@ class DDQL:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
 
         avg_reward = total_reward / episodes
         print(
@@ -296,11 +307,10 @@ class DDQL:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
-            is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
         self.save_model(env.__class__.__name__)
 

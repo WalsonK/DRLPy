@@ -1,73 +1,75 @@
 import os
 import pickle
-import time
 
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.models import Sequential
+import time
+from datetime import datetime
 from tqdm import tqdm
-
 from tools import print_metrics
+import copy
 
 
-class DQL:
+class RandomRollout:
     def __init__(
         self,
         state_size,
         action_size,
-        learning_rate=0.001,
-        gamma=0.95,
-        epsilon=1.0,
-        epsilon_min=0.01,
-        epsilon_decay=0.995,
+        num_rollouts=10,
+        rollout_depth=5,
+        exploration_factor=1.0,
     ):
         self.state_size = state_size
         self.action_size = action_size
-        self.learning_rate = learning_rate
-        self.gamma = gamma
-        self.epsilon = epsilon
-        self.epsilon_min = epsilon_min
-        self.epsilon_decay = epsilon_decay
-        self.model = self.build_model()
+        self.num_rollouts = num_rollouts
+        self.rollout_depth = rollout_depth
+        self.exploration_factor = exploration_factor
 
-    def build_model(self):
-        model = Sequential()
-        model.add(Dense(64, input_dim=self.state_size, activation="relu"))
-        model.add(Dense(64, activation="relu"))
-        model.add(Dense(self.action_size, activation="linear"))
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss=tf.keras.losses.MeanSquaredError(),
-        )
-        return model
+    def simulate_rollout(self, env, initial_state, initial_action):
+        sim_env = copy.deepcopy(env)
 
-    def update_epsilon(self):
-        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        total_reward = 0
 
-    def choose_action(self, state, available_actions):
-        if np.random.rand() <= self.epsilon:
-            return np.random.choice(available_actions)
-        q_values = self.model.predict(state.reshape(1, -1), verbose=0)
-        valid_q_values = np.full(len(q_values[0]), -np.inf)
+        if hasattr(env, "available_actions") and isinstance(
+            env.available_actions(), dict
+        ):
+            available_actions = sim_env.available_actions()
+            _, reward, done = sim_env.step(available_actions[initial_action])
+        else:
+            _, reward, done = sim_env.step(initial_action)
+
+        total_reward += reward
+
+        depth = 0
+        while not done and depth < self.rollout_depth:
+            available_actions = sim_env.available_actions()
+            if isinstance(available_actions, dict):
+                action = np.random.choice(list(available_actions.keys()))
+                _, reward, done = sim_env.step(available_actions[action])
+            else:
+                action = np.random.choice(available_actions)
+                _, reward, done = sim_env.step(action)
+
+            total_reward += reward
+            depth += 1
+
+        return total_reward
+
+    def choose_action(self, env, state, available_actions):
+        action_rewards = {}
+
         for action in available_actions:
-            valid_q_values[action] = q_values[0][action]
-        return np.argmax(valid_q_values)
+            rewards = []
+            for _ in range(self.num_rollouts):
+                reward = self.simulate_rollout(env, state, action)
+                rewards.append(reward)
 
-    def learn(self, state, action, reward, next_state, done):
-        target = reward
-        if not done:
-            next_q_values = self.model.predict(next_state.reshape(1, -1), verbose=0)
-            target += self.gamma * np.max(next_q_values[0])
+            mean_reward = np.mean(rewards)
+            std_reward = np.std(rewards)
 
-        current_q_values = self.model.predict(state.reshape(1, -1), verbose=0)
-        current_q_values[0][action] = target
+            # Score UCB (Upper Confidence Bound)
+            action_rewards[action] = mean_reward + self.exploration_factor * std_reward
 
-        history = self.model.fit(
-            state.reshape(1, -1), current_q_values, epochs=1, verbose=0
-        )
-        loss = history.history["loss"][0]
-        return loss
+        return max(action_rewards.items(), key=lambda x: x[1])[0]
 
     def train(
         self,
@@ -77,34 +79,29 @@ class DQL:
         test_intervals=[1000, 10_000, 100_000, 1000000],
     ):
         scores_list = []
-        losses_per_episode = []
         episode_times = []
         agent_action_times = []
         action_list = []
-        step_by_episode = []
+        step_by_game = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
             "a",
         ) as file:
             file.write("Training Started\n")
-            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
             for e in range(episodes):
                 start_time = time.time()
                 state = env.reset()
                 total_reward = 0
                 step_count = 0
-                episode_losses = []
 
                 pbar = tqdm(
                     total=max_steps,
                     desc=f"Episode {e + 1}/{episodes}",
                     unit="Step",
                     bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                    f"Average Action Time: 0",
-                    dynamic_ncols=True,
+                    postfix=f"Total reward: {total_reward}, Agent Step: {step_count}, Average Action Time: 0",
                 )
 
                 if hasattr(env, "roll_dice"):
@@ -114,43 +111,34 @@ class DQL:
                     available_actions = env.available_actions()
                     keys = (
                         list(available_actions.keys())
-                        if hasattr(env, "available_actions")
-                        and isinstance(env.available_actions(), dict)
+                        if isinstance(available_actions, dict)
                         else available_actions
                     )
 
                     if hasattr(env, "current_player") and env.current_player == 1:
                         start_time_action = time.time()
-                        action = self.choose_action(state, keys)
+                        action = self.choose_action(env, state, keys)
                         end_time_action = time.time()
-                        agent_action_times.append(end_time_action - start_time_action)
                         step_count += 1
                     else:
                         action = np.random.choice(keys)
 
                     action_list.append(action)
 
-                    pbar.update(1)
-
-                    if hasattr(env, "available_actions") and isinstance(
-                        env.available_actions(), dict
-                    ):
+                    if isinstance(available_actions, dict):
                         next_state, reward, done = env.step(available_actions[action])
                     else:
                         next_state, reward, done = env.step(action)
 
-                    loss = self.learn(state, action, reward, next_state, done)
-                    episode_losses.append(loss)
-
                     state = next_state
                     total_reward += reward
+                    pbar.update(1)
                     pbar.set_postfix(
                         {
                             "Total Reward": total_reward,
-                            "Epsilon": self.epsilon,
                             "Agent Step": step_count,
                             "Average Action Time": np.mean(agent_action_times)
-                            if len(agent_action_times) > 0
+                            if agent_action_times
                             else 0,
                         }
                     )
@@ -158,43 +146,34 @@ class DQL:
                     if env.done:
                         break
 
-                if not env.done and step_count >= max_steps:
-                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-
-                losses_per_episode.append(
-                    np.mean(episode_losses) if episode_losses else 0
-                )
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
-                step_by_episode.append(step_count)
                 scores_list.append(total_reward)
+                step_by_game.append(step_count)
+                agent_action_times.append(end_time_action - start_time_action)
 
-                self.update_epsilon()
                 pbar.close()
+
                 if (e + 1) in test_intervals:
-                    win_rate, avg_reward = self.test(
-                        env, episodes=200, max_steps=max_steps
-                    )
+                    avg_score = self.test(env, episodes=100, max_steps=max_steps)
                     file.write(
-                        f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
+                        f"Test after {e + 1} episodes: Average score: {avg_score}\n"
                     )
 
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
             )
-            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
-        print_metrics(
-            episodes=range(episodes),
-            scores=scores_list,
-            episode_times=episode_times,
-            losses=losses_per_episode,
-            steps_per_game=step_by_episode,
-            actions=action_list,
-            algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__,
-        )
+            print_metrics(
+                episodes=range(episodes),
+                scores=scores_list,
+                episode_times=episode_times,
+                actions=action_list,
+                steps_per_game=step_by_game,
+                algo_name=self.__class__.__name__,
+                env_name=env.__class__.__name__,
+            )
 
         return np.mean(scores_list)
 
@@ -203,7 +182,7 @@ class DQL:
         episode_times = []
         action_times = []
         actions_list = []
-        step_by_episode = []
+        step_by_game = []
         win_game = 0
         total_reward = 0
         for e in tqdm(range(episodes), desc="Testing"):
@@ -214,7 +193,7 @@ class DQL:
             step_count = 0
             episode_reward = 0
 
-            if hasattr(env, "play_game"):  # Pour Farkle
+            if hasattr(env, "play_game"):
                 winner, reward, a_list, a_times = env.play_game(
                     isBotGame=True, show=False, agentPlayer=self
                 )
@@ -230,7 +209,7 @@ class DQL:
 
                     if hasattr(env, "current_player") and env.current_player == 1:
                         action_start_time = time.time()
-                        action = self.choose_action(state, available_actions)
+                        action = self.choose_action(env, state, available_actions)
                         action_end_time = time.time()
                         episode_action_times.append(action_end_time - action_start_time)
                         actions_list.append(action)
@@ -251,10 +230,9 @@ class DQL:
 
                 if not done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-
+            step_by_game.append(step_count)
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
-            step_by_episode.append(step_count)
         avg_reward = total_reward / episodes
         print(
             f"Test Results:\n"
@@ -262,60 +240,51 @@ class DQL:
             f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
             f"- Average reward per episode: {avg_reward:.2f}"
         )
-        # Print metrics
+
         print_metrics(
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            steps_per_game=step_by_episode,
+            action_times=action_times,
             actions=actions_list,
+            steps_per_game=step_by_game,
+            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
         win_rate = win_game / episodes
-        self.save_model(env.__class__.__name__)
+        self.save_model(f"{env.__class__.__name__}")
         return win_rate, avg_reward
 
     def save_model(self, game_name):
-        """Save model and parameters"""
         os.makedirs("agents", exist_ok=True)
-        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
-        self.model.save(model_path)
 
-        # Save additional parameters
         params = {
             "state_size": self.state_size,
             "action_size": self.action_size,
-            "learning_rate": self.learning_rate,
-            "gamma": self.gamma,
-            "epsilon": self.epsilon,
-            "epsilon_min": self.epsilon_min,
-            "epsilon_decay": self.epsilon_decay,
+            "num_rollouts": self.num_rollouts,
+            "rollout_depth": self.rollout_depth,
+            "exploration_factor": self.exploration_factor,
         }
 
-        with open(f"agents/{self.__class__.__name__}_{game_name}._params.pkl", "wb") as f:
+        params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
+        with open(params_path, "wb") as f:
             pickle.dump(params, f)
 
         print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")
 
     def load_model(self, game_name):
-        """Load model and parameters"""
-        model_path = f"agents/{self.__class__.__name__}_{game_name}.h5"
-        params_path = f"agents/{self.__class__.__name__}_{game_name}._params.pkl"
+        params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
 
-        if os.path.exists(model_path) and os.path.exists(params_path):
-            self.model = tf.keras.models.load_model(model_path)
-
+        if os.path.exists(params_path):
             with open(params_path, "rb") as f:
                 params = pickle.load(f)
 
             self.state_size = params["state_size"]
             self.action_size = params["action_size"]
-            self.learning_rate = params["learning_rate"]
-            self.gamma = params["gamma"]
-            self.epsilon = params["epsilon"]
-            self.epsilon_min = params["epsilon_min"]
-            self.epsilon_decay = params["epsilon_decay"]
+            self.num_rollouts = params["num_rollouts"]
+            self.rollout_depth = params["rollout_depth"]
+            self.exploration_factor = params["exploration_factor"]
 
             print(f"Agent {self.__class__.__name__} pour le jeu {game_name} chargé.")
         else:
