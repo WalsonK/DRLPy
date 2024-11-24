@@ -53,6 +53,7 @@ def select_agent():
                 "6 - Reinforce with baseline\n"
                 "7 - Reinforce with actor critic\n"
                 "8 - PPO\n"
+                "10- TabularQLearning\n"
                 "> "
             )
         )
@@ -73,6 +74,8 @@ def select_agent():
         model = models.ReinforceActorCritic(state_size, action_size)
     elif agent_name == 8:
         model = models.PPO(state_size, action_size)
+    elif agent_name == 10:
+        model = models.TabularQLearning(state_size, action_size)
     else:
         model = models.DQL(state_size, action_size)
     return model

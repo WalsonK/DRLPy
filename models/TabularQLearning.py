@@ -3,6 +3,7 @@ import os
 import pickle
 import time
 from tqdm import tqdm
+from tools import print_metrics
 
 from environement.lineworld import LineWorld
 
@@ -70,6 +71,7 @@ class TabularQLearning:
     def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
         scores_list = []
         episode_times = []
+        actions_list = []
 
         with open(f"training_results_TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
             file.write("Training Started\n")
@@ -94,6 +96,8 @@ class TabularQLearning:
                     available_actions = env.available_actions()
                     action = self.choose_action(state, available_actions)
 
+                    actions_list.append(action)
+
                     next_state, reward, done = env.step(action)
 
                     self.learn(state, action, reward, next_state, done)
@@ -105,11 +109,12 @@ class TabularQLearning:
                     pbar.set_postfix({"Total Reward": total_reward, "Epsilon": self.epsilon})
 
                     if env.done:
-                        scores_list.append(total_reward)
+
                         break
 
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
+                scores_list.append(total_reward)
 
                 self.update_epsilon()
                 pbar.close()
@@ -121,6 +126,15 @@ class TabularQLearning:
             file.write("\nTraining Complete\n")
             file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
+
+            print_metrics(
+                episodes=range(episodes),
+                scores=scores_list,
+                episode_times=episode_times ,
+                actions=actions_list,
+                algo_name=self.__class__.__name__,
+                env_name = env.__class__.__name__
+        )
 
         return np.mean(scores_list)
 
@@ -158,20 +172,20 @@ class TabularQLearning:
         return win_rate, avg_reward
 
 
-    def save_model(self, model_name):
-        os.makedirs("saved_models", exist_ok=True)
-        with open(f"saved_models/{model_name}_q_table.pkl", "wb") as f:
+    def save_model(self, game_name):
+        os.makedirs("agents", exist_ok=True)
+        with open(f"agents/{game_name}_q_table.pkl", "wb") as f:
             pickle.dump(self.q_table, f)
-        print(f"Q-table saved as '{model_name}'.")
+        print(f"Q-table saved as '{game_name}'.")
 
-    def load_model(self, model_name):
-        model_path = f"saved_models/{model_name}_q_table.pkl"
+    def load_model(self, game_name):
+        model_path = f"agents/{game_name}_q_table.pkl"
         if os.path.exists(model_path):
             with open(model_path, "rb") as f:
                 self.q_table = pickle.load(f)
-            print(f"Q-table loaded from '{model_name}'.")
+            print(f"Q-table loaded from '{game_name}'.")
         else:
-            print(f"No saved model found with the name '{model_name}'.")
+            print(f"No saved model found with the name '{game_name}'.")
 
 
 #enve = LineWorld(5)
