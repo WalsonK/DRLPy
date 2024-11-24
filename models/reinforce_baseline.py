@@ -125,7 +125,7 @@ class ReinforceBaseline:
             steps_per_game,
             losses_per_episode,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
         )
         return np.mean(scores_list)
 
@@ -143,7 +143,9 @@ class ReinforceBaseline:
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner, reward, a_list, a_times = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = environment.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_games += 1
                 episode_end_time = time.time()
@@ -193,7 +195,7 @@ class ReinforceBaseline:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
         )
 
     def generate_episode(self, environment, max_step):

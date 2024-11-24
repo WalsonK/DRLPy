@@ -228,7 +228,7 @@ class DDQL:
                 losses=losses_per_episode,
                 actions=action_list,
                 algo_name=self.__class__.__name__,
-                env_name=env.__class__.__name__
+                env_name=env.__class__.__name__,
             )
 
         return np.mean(scores_list)
@@ -249,7 +249,9 @@ class DDQL:
             step_count = 0
 
             if hasattr(env, "play_game"):
-                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_game += 1
                 episode_end_time = time.time()
@@ -300,7 +302,7 @@ class DDQL:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
 
     def save_model(self, game_name):

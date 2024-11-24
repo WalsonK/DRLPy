@@ -235,7 +235,7 @@ class PPO:
             losses=losses_per_episode,
             actions=action_list,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
 
         return np.mean(scores_list)
@@ -343,7 +343,9 @@ class PPO:
             step_count = 0
 
             if hasattr(env, "play_game"):
-                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_game += 1
                 episode_end_time = time.time()
@@ -394,7 +396,7 @@ class PPO:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
 
     def save_model(self, game_name):
@@ -434,7 +436,11 @@ class PPO:
             value_path = f"agents/{self.__class__.__name__}_{game_name}_value.h5"
             params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
 
-            if not (os.path.exists(policy_path) and os.path.exists(value_path) and os.path.exists(params_path)):
+            if not (
+                os.path.exists(policy_path)
+                and os.path.exists(value_path)
+                and os.path.exists(params_path)
+            ):
                 raise FileNotFoundError("One or more model files are missing")
 
             self.policy_network = tf.keras.models.load_model(policy_path)
@@ -457,11 +463,9 @@ class PPO:
             self.epochs = params.get("epochs", self.epochs)
             self.mini_batch_size = params.get("mini_batch_size", self.mini_batch_size)
 
-
         except FileNotFoundError as e:
             print(f"Model file not found: {e}")
         except ValueError as e:
             print(f"Error in parameters: {e}")
         except Exception as e:
             print(f"Unexpected error loading model: {e}")
-
