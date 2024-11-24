@@ -15,7 +15,7 @@ class PPO:
         self,
         state_size: int,
         action_size: int,
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.001,
         gamma: float = 0.99,
         lam: float = 0.95,
         epsilon_clip: float = 0.2,
@@ -327,50 +327,75 @@ class PPO:
                     zip(value_grads, self.value_network.trainable_variables)
                 )
 
-    def test(self, env, episodes=200, max_steps=500):
-        win_games = 0
+    def test(self, env, episodes=200, max_steps=10):
+        scores_list = []
+        episode_times = []
+        action_times = []
+        actions_list = []
+        win_game = 0
         total_reward = 0
 
-        for episode in tqdm(range(episodes), desc="Testing"):
-            if hasattr(env, "play_game"):
-                winner = env.play_game(isBotGame=True, show=False, agentPlayer=self)
-                if winner == 0:
-                    win_games += 1
-            else:
-                state = env.reset()
-                done = False
-                episode_reward = 0
-                step_count = 0
+        for e in tqdm(range(episodes), desc="Testing"):
+            episode_start_time = time.time()
+            episode_action_times = []
+            state = env.reset()
+            episode_reward = 0
+            step_count = 0
 
-                while not done and step_count < max_steps:
+            if hasattr(env, "play_game"):
+                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                if winner == 0:
+                    win_game += 1
+                episode_end_time = time.time()
+                actions_list = a_list
+                episode_action_times = a_times
+                scores_list.append(reward)
+            else:
+                while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
 
                     if hasattr(env, "current_player") and env.current_player == 1:
+                        action_start_time = time.time()
                         action = self.choose_action(state, available_actions)
+                        action_end_time = time.time()
+                        episode_action_times.append(action_end_time - action_start_time)
+                        actions_list.append(action)
+                        step_count += 1
                     else:
-                        if isinstance(available_actions, dict):
-                            action = np.random.choice(list(available_actions.keys()))
-                        else:
-                            action = np.random.choice(available_actions)
+                        action = np.random.choice(available_actions)
 
                     next_state, reward, done = env.step(action)
                     episode_reward += reward
                     state = next_state
-                    step_count += 1
 
-                    if done and hasattr(env, "winner"):
-                        if env.winner == 1:
-                            win_games += 1
+                    if env.done and hasattr(env, "winner") and env.winner == 1.0:
+                        win_game += 1
+                        break
 
+                episode_end_time = time.time()
                 total_reward += episode_reward
 
-        win_rate = win_games / episodes
-        avg_reward = total_reward / episodes
-        print(f"\nTest Results:")
-        print(f"Win Rate: {win_rate:.2%}")
-        print(f"Average Reward: {avg_reward:.2f}")
+            action_times.append(np.mean(episode_action_times))
+            episode_times.append(episode_end_time - episode_start_time)
 
-        return win_rate, avg_reward
+        avg_reward = total_reward / episodes
+        print(
+            f"Test Results:\n"
+            f"- Games won: {win_game}/{episodes}\n"
+            f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
+            f"- Average reward per episode: {avg_reward:.2f}"
+        )
+        # Print metrics
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            action_times=action_times,
+            actions=actions_list,
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__
+        )
 
     def save_model(self, game_name):
         try:
@@ -405,19 +430,38 @@ class PPO:
     def load_model(self, game_name):
         """Load the model from disk"""
         try:
-            self.policy_network = tf.keras.models.load_model(
-                f"agents/{self.__class__.__name__}_{game_name}_policy.h5"
-            )
-            self.value_network = tf.keras.models.load_model(
-                f"agents/{self.__class__.__name__}_{game_name}_value.h5"
-            )
+            policy_path = f"agents/{self.__class__.__name__}_{game_name}_policy.h5"
+            value_path = f"agents/{self.__class__.__name__}_{game_name}_value.h5"
+            params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
+
+            if not (os.path.exists(policy_path) and os.path.exists(value_path) and os.path.exists(params_path)):
+                raise FileNotFoundError("One or more model files are missing")
+
+            self.policy_network = tf.keras.models.load_model(policy_path)
+            self.value_network = tf.keras.models.load_model(value_path)
             self.old_policy_network = self._clone_policy_network()
 
-            with open(
-                f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "rb"
-            ) as f:
+            with open(params_path, "rb") as f:
                 params = pickle.load(f)
-                self.__dict__.update(params)
 
+            if not isinstance(params, dict):
+                raise ValueError("Parameters file is corrupted or invalid")
+
+            self.state_size = params.get("state_size", self.state_size)
+            self.action_size = params.get("action_size", self.action_size)
+            self.learning_rate = params.get("learning_rate", self.learning_rate)
+            self.gamma = params.get("gamma", self.gamma)
+            self.epsilon_clip = params.get("epsilon_clip", self.epsilon_clip)
+            self.value_loss_coef = params.get("value_loss_coef", self.value_loss_coef)
+            self.entropy_coef = params.get("entropy_coef", self.entropy_coef)
+            self.epochs = params.get("epochs", self.epochs)
+            self.mini_batch_size = params.get("mini_batch_size", self.mini_batch_size)
+
+
+        except FileNotFoundError as e:
+            print(f"Model file not found: {e}")
+        except ValueError as e:
+            print(f"Error in parameters: {e}")
         except Exception as e:
-            print(f"Error loading model: {e}")
+            print(f"Unexpected error loading model: {e}")
+
