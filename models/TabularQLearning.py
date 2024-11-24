@@ -171,18 +171,38 @@ class TabularQLearning:
 
         return win_rate, avg_reward
 
-
     def save_model(self, game_name):
         os.makedirs("agents", exist_ok=True)
         with open(f"agents/{game_name}_q_table.pkl", "wb") as f:
-            pickle.dump(self.q_table, f)
+            params = {
+                "state_size" : self.state_size,
+                "action_size" : self.action_size,
+                "learning_rate" : self.learning_rate,
+                "gamma" : self.gamma,
+                "epsilon" : self.epsilon,
+                "epsilon_min" : self.epsilon_min,
+                "epsilon_decay" : self.epsilon_decay,
+                "q_table" : self.q_table,
+                "state_to_index" : self.state_to_index,
+            }
+            pickle.dump(params, f)
         print(f"Q-table saved as '{game_name}'.")
 
     def load_model(self, game_name):
         model_path = f"agents/{game_name}_q_table.pkl"
         if os.path.exists(model_path):
             with open(model_path, "rb") as f:
-                self.q_table = pickle.load(f)
+                params = pickle.load(f)
+                self.state_size = params["state_size"]
+                self.action_size = params["action_size"]
+                self.learning_rate = params["learning_rate"]
+                self.gamma = params["gamma"]
+                self.epsilon = params["epsilon"]
+                self.epsilon_min = params["epsilon_min"]
+                self.epsilon_decay = params["epsilon_decay"]
+                self.q_table = params["q_table"]
+                self.state_to_index = params["state_to_index"]
+
             print(f"Q-table loaded from '{game_name}'.")
         else:
             print(f"No saved model found with the name '{game_name}'.")
