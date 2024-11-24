@@ -182,6 +182,7 @@ class Reinforce:
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__
         )
+        self.save_model(environment.__class__.__name__)
 
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []

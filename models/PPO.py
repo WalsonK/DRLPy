@@ -15,7 +15,7 @@ class PPO:
         self,
         state_size: int,
         action_size: int,
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.1,
         gamma: float = 0.99,
         lam: float = 0.95,
         epsilon_clip: float = 0.2,
@@ -369,7 +369,7 @@ class PPO:
         print(f"\nTest Results:")
         print(f"Win Rate: {win_rate:.2%}")
         print(f"Average Reward: {avg_reward:.2f}")
-
+        self.save_model(env.__class__.__name__)
         return win_rate, avg_reward
 
     def save_model(self, game_name):

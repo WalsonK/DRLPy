@@ -479,6 +479,7 @@ class DDQLWithPER:
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__
         )
+        self.save_model(env.__class__.__name__)
         return win_rate, avg_reward
 
     def save_model(self, game_name):
