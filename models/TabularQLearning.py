@@ -1,0 +1,187 @@
+import numpy as np
+import os
+import pickle
+import time
+from tqdm import tqdm
+
+from environement.lineworld import LineWorld
+
+class TabularQLearning:
+    def __init__(
+        self,
+        state_size,
+        action_size,
+        learning_rate=0.1,
+        gamma=0.95,
+        epsilon=1.0,
+        epsilon_min=0.01,
+        epsilon_decay=0.995,
+    ):
+        self.state_size = state_size
+        self.action_size = action_size
+        self.learning_rate = learning_rate
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.epsilon_min = epsilon_min
+        self.epsilon_decay = epsilon_decay
+
+        # Initialize Q-table with zeros
+        self.q_table = np.zeros((state_size, action_size))
+
+        # Map state vectors to indices
+        self.state_to_index = {}
+
+    def get_state_index(self, state):
+        """
+        Converts a state vector into a unique index for the Q-table.
+        """
+        state_tuple = tuple(state)  # Convert the state vector into a tuple (hashable)
+        if state_tuple not in self.state_to_index:
+            # Assign a new index if this state hasn't been seen before
+            new_index = len(self.state_to_index)
+            self.state_to_index[state_tuple] = new_index
+        return self.state_to_index[state_tuple]
+
+    def update_epsilon(self):
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+
+    def choose_action(self, state, available_actions):
+        state_index = self.get_state_index(state)
+        if np.random.rand() <= self.epsilon:
+            return np.random.choice(available_actions)
+
+        # Filter Q-values for available actions only
+        valid_q_values = np.full(self.action_size, -np.inf)
+        for action in available_actions:
+            valid_q_values[action] = self.q_table[state_index, action]
+        return np.argmax(valid_q_values)
+
+    def learn(self, state, action, reward, next_state, done):
+        state_index = self.get_state_index(state)
+        next_state_index = self.get_state_index(next_state)
+
+        current_q_value = self.q_table[state_index, action]
+        max_next_q_value = np.max(self.q_table[next_state_index]) if not done else 0
+        target = reward + self.gamma * max_next_q_value
+
+        # Update Q-value using the Q-learning formula
+        self.q_table[state_index, action] += self.learning_rate * (target - current_q_value)
+
+    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
+        scores_list = []
+        episode_times = []
+
+        with open(f"training_results_TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+            file.write("Training Started\n")
+            file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
+
+            for e in range(episodes):
+                start_time = time.time()
+                state = env.reset()
+                total_reward = 0
+                step_count = 0
+
+                pbar = tqdm(
+                    total=max_steps,
+                    desc=f"Episode {e + 1}/{episodes}",
+                    unit="Step",
+                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                    postfix=f"Total Reward: {total_reward}, Epsilon: {self.epsilon:.4f}",
+                    dynamic_ncols=True,
+                )
+
+                while not env.done and step_count < max_steps:
+                    available_actions = env.available_actions()
+                    action = self.choose_action(state, available_actions)
+
+                    next_state, reward, done = env.step(action)
+
+                    self.learn(state, action, reward, next_state, done)
+
+                    state = next_state
+                    total_reward += reward
+                    step_count += 1
+
+                    pbar.set_postfix({"Total Reward": total_reward, "Epsilon": self.epsilon})
+
+                    if env.done:
+                        scores_list.append(total_reward)
+                        break
+
+                end_time = time.time()
+                episode_times.append(end_time - start_time)
+
+                self.update_epsilon()
+                pbar.close()
+
+                if (e + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps)
+                    file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
+
+            file.write("\nTraining Complete\n")
+            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
+
+        return np.mean(scores_list)
+
+    def test(self, env, episodes=200, max_steps=10):
+        win_game = 0
+        total_reward = 0
+        for e in tqdm(range(episodes), desc="Testing"):
+            state = env.reset()
+            done = False
+            step_count = 0
+            episode_reward = 0
+
+            while not env.done and step_count < max_steps:
+                available_actions = env.available_actions()
+                action = self.choose_action(state, available_actions)
+                next_state, reward, done = env.step(action)
+                episode_reward += reward
+                state = next_state
+
+                if done and hasattr(env, "winner") and env.winner == 1.0:
+                    win_game += 1
+                    break
+
+            total_reward += episode_reward
+
+        avg_reward = total_reward / episodes
+        win_rate = win_game / episodes
+        print(
+            f"Test Results:\n"
+            f"- Games won: {win_game}/{episodes}\n"
+            f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
+            f"- Average reward per episode: {avg_reward:.2f}"
+        )
+
+        return win_rate, avg_reward
+
+
+    def save_model(self, model_name):
+        os.makedirs("saved_models", exist_ok=True)
+        with open(f"saved_models/{model_name}_q_table.pkl", "wb") as f:
+            pickle.dump(self.q_table, f)
+        print(f"Q-table saved as '{model_name}'.")
+
+    def load_model(self, model_name):
+        model_path = f"saved_models/{model_name}_q_table.pkl"
+        if os.path.exists(model_path):
+            with open(model_path, "rb") as f:
+                self.q_table = pickle.load(f)
+            print(f"Q-table loaded from '{model_name}'.")
+        else:
+            print(f"No saved model found with the name '{model_name}'.")
+
+
+#enve = LineWorld(5)
+
+#model = TabularQLearning(5, 2)
+
+#model.train(env=enve, episodes=1500, max_steps=300)
+#model.test(env=enve, episodes=100, max_steps=200)
+#name = "farkle_test_save_load"
+# _model.save_model(name)
+# model_test = Reinforce(4, 4, learning_rate=10)
+# model_test.load_model(name)
+# model_test.test(environment=_env, episodes=10, max_steps=200)
