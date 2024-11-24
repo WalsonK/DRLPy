@@ -3,6 +3,7 @@ import pickle
 
 import numpy as np
 import time
+from datetime import datetime
 from tqdm import tqdm
 from tools import print_metrics
 import copy
@@ -10,12 +11,12 @@ import copy
 
 class RandomRollout:
     def __init__(
-            self,
-            state_size,
-            action_size,
-            num_rollouts=10,
-            rollout_depth=5,
-            exploration_factor=1.0
+        self,
+        state_size,
+        action_size,
+        num_rollouts=10,
+        rollout_depth=5,
+        exploration_factor=1.0,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -24,12 +25,13 @@ class RandomRollout:
         self.exploration_factor = exploration_factor
 
     def simulate_rollout(self, env, initial_state, initial_action):
-
         sim_env = copy.deepcopy(env)
 
         total_reward = 0
 
-        if hasattr(env, "available_actions") and isinstance(env.available_actions(), dict):
+        if hasattr(env, "available_actions") and isinstance(
+            env.available_actions(), dict
+        ):
             available_actions = sim_env.available_actions()
             _, reward, done = sim_env.step(available_actions[initial_action])
         else:
@@ -52,7 +54,7 @@ class RandomRollout:
 
         return total_reward
 
-    def choose_action(self, env,state, available_actions):
+    def choose_action(self, env, state, available_actions):
         action_rewards = {}
 
         for action in available_actions:
@@ -70,21 +72,20 @@ class RandomRollout:
         return max(action_rewards.items(), key=lambda x: x[1])[0]
 
     def train(
-            self,
-            env,
-            episodes=200,
-            max_steps=500,
-            test_intervals=[1000, 10_000, 100_000, 1000000],
+        self,
+        env,
+        episodes=200,
+        max_steps=500,
+        test_intervals=[1000, 10_000, 100_000, 1000000],
     ):
-
         scores_list = []
         episode_times = []
         agent_action_times = []
         action_list = []
 
         with open(
-                f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
-                "a",
+            f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
+            "a",
         ) as file:
             file.write("Training Started\n")
 
@@ -115,7 +116,7 @@ class RandomRollout:
 
                     if hasattr(env, "current_player") and env.current_player == 1:
                         start_time_action = time.time()
-                        action = self.choose_action(env,state, keys)
+                        action = self.choose_action(env, state, keys)
                         end_time_action = time.time()
                         agent_action_times.append(end_time_action - start_time_action)
                         step_count += 1
@@ -167,7 +168,7 @@ class RandomRollout:
                 episode_times=episode_times,
                 actions=action_list,
                 algo_name=self.__class__.__name__,
-                env_name=env.__class__.__name__
+                env_name=env.__class__.__name__,
             )
 
         return np.mean(scores_list)
@@ -188,7 +189,9 @@ class RandomRollout:
             episode_reward = 0
 
             if hasattr(env, "play_game"):
-                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_game += 1
                 episode_end_time = time.time()
@@ -201,7 +204,7 @@ class RandomRollout:
 
                     if hasattr(env, "current_player") and env.current_player == 1:
                         action_start_time = time.time()
-                        action = self.choose_action(env,state, available_actions)
+                        action = self.choose_action(env, state, available_actions)
                         action_end_time = time.time()
                         episode_action_times.append(action_end_time - action_start_time)
                         actions_list.append(action)
@@ -241,9 +244,10 @@ class RandomRollout:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
         win_rate = win_game / episodes
+        self.save_model(f"{env.__class__.__name__}")
         return win_rate, avg_reward
 
     def save_model(self, game_name):
@@ -254,7 +258,7 @@ class RandomRollout:
             "action_size": self.action_size,
             "num_rollouts": self.num_rollouts,
             "rollout_depth": self.rollout_depth,
-            "exploration_factor": self.exploration_factor
+            "exploration_factor": self.exploration_factor,
         }
 
         params_path = f"agents/{self.__class__.__name__}_{game_name}_params.pkl"
