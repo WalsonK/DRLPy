@@ -273,6 +273,7 @@ class DQL:
             env_name=env.__class__.__name__,
         )
         win_rate = win_game / episodes
+        self.save_model(env.__class__.__name__)
         return win_rate, avg_reward
 
     def save_model(self, game_name):
@@ -292,7 +293,7 @@ class DQL:
             "epsilon_decay": self.epsilon_decay,
         }
 
-        with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
+        with open(f"agents/{self.__class__.__name__}_{game_name}._params.pkl", "wb") as f:
             pickle.dump(params, f)
 
         print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")

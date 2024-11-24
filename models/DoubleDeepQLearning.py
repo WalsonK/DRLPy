@@ -312,6 +312,7 @@ class DDQL:
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
+        self.save_model(env.__class__.__name__)
 
     def save_model(self, game_name):
         agent_data = {

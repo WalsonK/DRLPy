@@ -233,6 +233,7 @@ class ReinforceActorCritic:
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__,
         )
+        self.save_model(environment.__class__.__name__)
 
     def update_baseline(self, state, delta):
         with tf.GradientTape() as tape:

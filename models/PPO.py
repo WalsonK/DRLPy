@@ -15,7 +15,7 @@ class PPO:
         self,
         state_size: int,
         action_size: int,
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.1,
         gamma: float = 0.99,
         lam: float = 0.95,
         epsilon_clip: float = 0.2,
@@ -373,10 +373,12 @@ class PPO:
                 episode_end_time = time.time()
                 total_reward += episode_reward
 
+
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
             step_by_episode.append(step_count)
 
+        win_rate = win_games / episodes
         avg_reward = total_reward / episodes
         print(
             f"Test Results:\n"
@@ -384,6 +386,7 @@ class PPO:
             f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
             f"- Average reward per episode: {avg_reward:.2f}"
         )
+        self.save_model(env.__class__.__name__)
         # Print metrics
         print_metrics(
             episodes=range(episodes),
@@ -394,7 +397,8 @@ class PPO:
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
-        return win_game / episodes, avg_reward
+        return win_rate, avg_reward
+      
 
     def save_model(self, game_name):
         try:
