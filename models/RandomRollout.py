@@ -82,6 +82,7 @@ class RandomRollout:
         episode_times = []
         agent_action_times = []
         action_list = []
+        step_by_game = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -118,7 +119,6 @@ class RandomRollout:
                         start_time_action = time.time()
                         action = self.choose_action(env, state, keys)
                         end_time_action = time.time()
-                        agent_action_times.append(end_time_action - start_time_action)
                         step_count += 1
                     else:
                         action = np.random.choice(keys)
@@ -149,6 +149,9 @@ class RandomRollout:
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
                 scores_list.append(total_reward)
+                step_by_game.append(step_count)
+                agent_action_times.append(end_time_action - start_time_action)
+
                 pbar.close()
 
                 if (e + 1) in test_intervals:
@@ -167,6 +170,7 @@ class RandomRollout:
                 scores=scores_list,
                 episode_times=episode_times,
                 actions=action_list,
+                steps_per_game=step_by_game,
                 algo_name=self.__class__.__name__,
                 env_name=env.__class__.__name__,
             )
@@ -178,6 +182,7 @@ class RandomRollout:
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_game = []
         win_game = 0
         total_reward = 0
         for e in tqdm(range(episodes), desc="Testing"):
@@ -225,7 +230,7 @@ class RandomRollout:
 
                 if not done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-
+            step_by_game.append(step_count)
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
         avg_reward = total_reward / episodes
@@ -242,6 +247,7 @@ class RandomRollout:
             episode_times=episode_times,
             action_times=action_times,
             actions=actions_list,
+            steps_per_game=step_by_game,
             is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
