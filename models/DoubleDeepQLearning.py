@@ -213,7 +213,7 @@ class DDQL:
                 self.update_epsilon()
                 pbar.close()
 
-                if (e + 1) in test_intervals:
+                if test_intervals is not None and (e + 1) in test_intervals:
                     avg_score = self.test(
                         env, episodes=100, max_steps=max_steps, model_name=env.__class__.__name__ + "_" + str(e + 1)
                     )  # Test sur 100 épisodes pour chaque palier

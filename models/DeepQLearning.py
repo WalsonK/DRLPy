@@ -171,7 +171,7 @@ class DQL:
 
                 self.update_epsilon()
                 pbar.close()
-                if (e + 1) in test_intervals:
+                if test_intervals is not None and (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
                         env, episodes=200, max_steps=max_steps, model_name=env.__class__.__name__ + "_" + str(e + 1)
                     )
@@ -269,6 +269,8 @@ class DQL:
             episode_times=episode_times,
             steps_per_game=step_by_episode,
             actions=actions_list,
+            action_times=action_times,
+            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )

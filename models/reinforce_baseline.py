@@ -106,7 +106,7 @@ class ReinforceBaseline:
                 policy_losses_per_episode.append(episode_policy_loss)
                 baseline_losses_per_episode.append(episode_baseline_loss)
 
-                if (episode + 1) in test_intervals:
+                if test_intervals is not None and (episode + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
                         environment,
                         10,

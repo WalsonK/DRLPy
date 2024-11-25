@@ -183,7 +183,7 @@ class DQN_with_replay:
 
                 self.update_epsilon()
                 pbar.close()
-                if (e + 1) in test_intervals:
+                if test_intervals is not None and (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
                         env,
                         episodes=200,
