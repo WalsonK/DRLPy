@@ -1,4 +1,6 @@
 import random
+import re
+import os
 from tqdm import tqdm
 
 from environement.farkle import Farkle
@@ -79,6 +81,23 @@ def select_agent():
     return model
 
 
+def get_unique_version(model_name, environment_name):
+    folder_path = "agents/"
+    environment_name = environment_name.capitalize()
+    file_pattern = re.compile(rf"^{re.escape(model_name)}_{re.escape(environment_name)}_(\d+)*")
+
+    iterations = []
+
+    for filename in os.listdir(folder_path):
+        match = file_pattern.match(filename)
+        if match:
+            it = int(match.group(1))
+            if it not in iterations:
+                iterations.append(it)
+
+    return sorted(iterations)
+
+
 def random_player(env):
     """Chooses a random action from available actions."""
     available_actions = env.available_actions()
@@ -102,12 +121,8 @@ def simulate_game(game, model=None, manual=False):
                         print("Your turn (Player).")
                         available_actions = game.available_actions()
                         action = manual_player(available_actions)
-                    elif isinstance(model, DQN_with_replay.DQN_with_replay):
-                        # **Model's Turn** (Model vs Random)
-                        print("Agent model's turn.")
-                        available_actions = game.available_actions()
-                        action = model.choose_action(state, available_actions)
-                    elif isinstance(model, DeepQLearning.DQL):
+                    elif any(isinstance(model, cls) for cls in vars(models).values() if isinstance(cls, type)):
+                        # elif isinstance(model, DQN_with_replay.DQN_with_replay):
                         # **Model's Turn** (Model vs Random)
                         print("Agent model's turn.")
                         available_actions = game.available_actions()
@@ -159,10 +174,10 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_agent(model, env, name, max_steps, episodes):
+def train_agent(model, env, name, max_steps, episodes, intervals=None):
     """Train the agent"""
     print(f"Starting training with {model.__class__.__name__}")
-    r = model.train(env, episodes=episodes, max_steps=max_steps)
+    r = model.train(env, episodes=episodes, max_steps=max_steps, test_intervals=intervals)
     print(f"Trained Mean score: {r}")
     model.test(env, episodes=episodes, max_steps=max_steps)
 
@@ -182,6 +197,13 @@ def train_agent(model, env, name, max_steps, episodes):
 
 def test_agent(model, env, name, max_steps, episodes):
     """Test the agent"""
+    its = get_unique_version(model.__class__.__name__, name)
+    if len(its) > 0:
+        print("Available iterations for testing:")
+        for index, iteration in enumerate(its):
+            print(f" - {iteration}")
+        it = int(input("> "))
+        name = name + "_" + str(it)
     agent.load_model(name)
     agent.test(env, episodes=episodes, max_steps=max_steps)
     if (
@@ -215,8 +237,13 @@ if __name__ == "__main__":
 
     if mode == "train":
         episode = int(input("How many episodes you want to train?: \n> "))
+        iteration = None
+        if episode == 0:
+            user_input = input("Enter iterations as comma-separated values (e.g., 5, 10, 15, 20): ")
+            iteration = [int(x.strip()) for x in user_input.split(",")]
+            episode = iteration[-1]+1
         agent = select_agent()
-        train_agent(agent, game, game_name, max_step, episode)
+        train_agent(agent, game, game_name, max_step, episode, iteration)
     elif mode == "test":
         episode = int(input("How many episodes you want to test?: \n> "))
         agent = select_agent()

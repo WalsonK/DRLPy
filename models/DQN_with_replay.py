@@ -185,7 +185,10 @@ class DQN_with_replay:
                 pbar.close()
                 if (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
-                        env, episodes=200, max_steps=max_steps
+                        env,
+                        episodes=200,
+                        max_steps=max_steps,
+                        model_name=env.__class__.__name__ + "_" + str(e + 1)
                     )
                     file.write(
                         f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
@@ -210,7 +213,7 @@ class DQN_with_replay:
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10):
+    def test(self, env, episodes=200, max_steps=10, model_name=None):
         scores_list = []
         episode_times = []
         action_times = []
@@ -285,7 +288,10 @@ class DQN_with_replay:
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
         )
-        self.save_model(env.__class__.__name__)
+
+        model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+        self.save_model(model_name)
+
         return win_rate, avg_reward
 
     def save_model(self, game_name):

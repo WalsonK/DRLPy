@@ -34,7 +34,7 @@ class ReinforceActorCritic:
         action_index = np.argmax([prediction[0][i] for i in available_actions])
         return available_actions[action_index]
 
-    def train(self, environment, episodes, max_steps):
+    def train(self, environment, episodes, max_steps, test_intervals=[1000, 10_000, 100_000, 1_000_000]):
         scores_list = []
         episode_times = []
         action_times = []
@@ -142,6 +142,14 @@ class ReinforceActorCritic:
 
                 pbar.close()
 
+                if (episode + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(
+                        environment,
+                        10,
+                        max_steps,
+                        model_name=environment.__class__.__name__ + "_" + str(episode + 1)
+                    )
+
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -165,7 +173,7 @@ class ReinforceActorCritic:
         )
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps):
+    def test(self, environment, episodes, max_steps, model_name=None):
         scores_list = []
         episode_times = []
         action_times = []
@@ -233,7 +241,11 @@ class ReinforceActorCritic:
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__,
         )
-        self.save_model(environment.__class__.__name__)
+
+        model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+        self.save_model(model_name)
+
+        return (win_games / episodes) * 100, np.mean(scores_list)
 
     def update_baseline(self, state, delta):
         with tf.GradientTape() as tape:

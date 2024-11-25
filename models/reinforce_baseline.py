@@ -29,7 +29,7 @@ class ReinforceBaseline:
         )
         return model
 
-    def train(self, environment, episodes, max_steps):
+    def train(self, environment, episodes, max_steps, test_intervals=[1000, 10_000, 100_000, 1_000_000]):
         scores_list = []
         episode_times = []
         action_times = []
@@ -106,6 +106,14 @@ class ReinforceBaseline:
                 policy_losses_per_episode.append(episode_policy_loss)
                 baseline_losses_per_episode.append(episode_baseline_loss)
 
+                if (episode + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(
+                        environment,
+                        10,
+                        max_steps,
+                        model_name=environment.__class__.__name__ + "_" + str(episode + 1)
+                    )
+
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -129,7 +137,7 @@ class ReinforceBaseline:
         )
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps):
+    def test(self, environment, episodes, max_steps, model_name=None):
         scores_list = []
         episode_times = []
         action_times = []
@@ -197,7 +205,11 @@ class ReinforceBaseline:
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__,
         )
+
+        model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
         self.save_model(environment.__class__.__name__)
+
+        return (win_games / episodes) * 100, np.mean(scores_list)
 
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []
