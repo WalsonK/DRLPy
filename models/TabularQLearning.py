@@ -2,7 +2,10 @@ import numpy as np
 import os
 import pickle
 import time
+import random
 from tqdm import tqdm
+
+from environement.farkle import Farkle
 from tools import print_metrics
 
 from environement.lineworld import LineWorld
@@ -12,7 +15,7 @@ class TabularQLearning:
         self,
         state_size,
         action_size,
-        learning_rate=0.1,
+        learning_rate=0.01,
         gamma=0.95,
         epsilon=1.0,
         epsilon_min=0.01,
@@ -32,6 +35,12 @@ class TabularQLearning:
         # Map state vectors to indices
         self.state_to_index = {}
 
+    def get_state_index2(self,state):
+        if str(state) not in self.state_to_index:
+            new_index = int("".join(map(str, state)),2)
+            self.state_to_index[str(state)] = new_index
+            return self.state_to_index[str(state)]
+
     def get_state_index(self, state):
         """
         Converts a state vector into a unique index for the Q-table.
@@ -41,6 +50,10 @@ class TabularQLearning:
             # Assign a new index if this state hasn't been seen before
             new_index = len(self.state_to_index)
             self.state_to_index[state_tuple] = new_index
+
+            if new_index >= self.q_table.shape[0]:
+                self.q_table = np.vstack([self.q_table, np.zeros((1, self.action_size))])
+
         return self.state_to_index[state_tuple]
 
     def update_epsilon(self):
@@ -49,8 +62,7 @@ class TabularQLearning:
     def choose_action(self, state, available_actions):
         state_index = self.get_state_index(state)
         if np.random.rand() <= self.epsilon:
-            return np.random.choice(available_actions)
-
+            return random.choice(available_actions)
         # Filter Q-values for available actions only
         valid_q_values = np.full(self.action_size, -np.inf)
         for action in available_actions:
@@ -72,6 +84,7 @@ class TabularQLearning:
         scores_list = []
         episode_times = []
         actions_list = []
+        agent_action_times = []
 
         with open(f"training_results_TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
             file.write("Training Started\n")
@@ -92,19 +105,49 @@ class TabularQLearning:
                     dynamic_ncols=True,
                 )
 
+                if isinstance(env, Farkle):
+                    env.roll_dice()
+
                 while not env.done and step_count < max_steps:
                     available_actions = env.available_actions()
-                    action = self.choose_action(state, available_actions)
+                    keys = (
+                        list(available_actions.keys())
+                        if isinstance(env, Farkle)
+                        else available_actions
+                    )
+
+                    action_time_start = time.time()
+
+                    action = self.choose_action(state, keys)
+                    action_time_end = time.time()
+
+                    agent_action_times.append(action_time_end - action_time_start)
 
                     actions_list.append(action)
 
-                    next_state, reward, done = env.step(action)
+                    next_state, reward, done = (
+                        env.step(available_actions[action])
+                        if isinstance(env, Farkle)
+                        else env.step(action)
+                    )
 
                     self.learn(state, action, reward, next_state, done)
 
                     state = next_state
                     total_reward += reward
                     step_count += 1
+                    pbar.update(1)
+
+                    pbar.set_postfix(
+                        {
+                            "Total Reward": total_reward,
+                            "Epsilon": self.epsilon,
+                            "Agent Step": step_count,
+                            "Average Action Time": np.mean(agent_action_times)
+                            if len(agent_action_times) > 0
+                            else 0,
+                        }
+                    )
 
                     pbar.set_postfix({"Total Reward": total_reward, "Epsilon": self.epsilon})
 
@@ -117,6 +160,7 @@ class TabularQLearning:
                 scores_list.append(total_reward)
 
                 self.update_epsilon()
+
                 pbar.close()
 
                 if (e + 1) in test_intervals:

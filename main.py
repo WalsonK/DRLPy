@@ -39,7 +39,7 @@ def select_game():
     return env, name, s_size, a_size
 
 
-def select_agent():
+def select_agent(s_size, a_size):
     """Set the agent from the user input"""
     agent_name = (
         int(
@@ -59,25 +59,25 @@ def select_agent():
         )
     )
     if agent_name == 1:
-        model = models.DQL(state_size, action_size)
+        model = models.DQL(s_size, a_size)
     elif agent_name == 2:
-        model = models.DDQL(state_size, action_size)
+        model = models.DDQL(s_size, a_size)
     elif agent_name == 3:
-        model = models.DDQLWithPER(state_size, action_size)
+        model = models.DDQLWithPER(s_size, a_size)
     elif agent_name == 4:
-        model = models.DQN_with_replay(state_size, action_size)
+        model = models.DQN_with_replay(s_size, a_size)
     elif agent_name == 5:
-        model = models.Reinforce(state_size, action_size)
+        model = models.Reinforce(s_size, a_size)
     elif agent_name == 6:
-        model = models.ReinforceBaseline(state_size, action_size)
+        model = models.ReinforceBaseline(s_size, a_size)
     elif agent_name == 7:
-        model = models.ReinforceActorCritic(state_size, action_size)
+        model = models.ReinforceActorCritic(s_size, a_size)
     elif agent_name == 8:
-        model = models.PPO(state_size, action_size)
+        model = models.PPO(s_size, a_size)
     elif agent_name == 10:
-        model = models.TabularQLearning(state_size, action_size)
+        model = models.TabularQLearning(s_size, a_size)
     else:
-        model = models.DQL(state_size, action_size)
+        model = models.DQL(s_size, a_size)
     return model
 
 
@@ -199,11 +199,11 @@ if __name__ == "__main__":
 
     if mode == "train":
         episode = int(input("How many episodes you want to train?: \n> "))
-        agent = select_agent()
+        agent = select_agent(state_size, action_size)
         train_agent(agent, game, game_name, max_step, episode)
     elif mode == "test":
         episode = int(input("How many episodes you want to test?: \n> "))
-        agent = select_agent()
+        agent = select_agent(state_size, action_size)
         test_agent(agent, game, game_name, max_step, episode)
     elif game_name in ["lineworld", "gridworld", "farkle", "tictactoe"] and manual:
         print(f"\n--- Manual Game in {game_name.title()} ---")
