@@ -373,7 +373,6 @@ class PPO:
                 episode_end_time = time.time()
                 total_reward += episode_reward
 
-
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
             step_by_episode.append(step_count)
@@ -398,7 +397,6 @@ class PPO:
             env_name=env.__class__.__name__,
         )
         return win_rate, avg_reward
-      
 
     def save_model(self, game_name):
         try:

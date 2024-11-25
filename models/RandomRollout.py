@@ -1,9 +1,7 @@
 import os
 import pickle
-
 import numpy as np
 import time
-from datetime import datetime
 from tqdm import tqdm
 from tools import print_metrics
 import copy
@@ -23,14 +21,20 @@ class RandomRollout:
         self.num_rollouts = num_rollouts
         self.rollout_depth = rollout_depth
         self.exploration_factor = exploration_factor
+        self.env = None  # Store environment instance
 
-    def simulate_rollout(self, env, initial_state, initial_action):
-        sim_env = copy.deepcopy(env)
+    def set_environment(self, env):
+        self.env = env
 
+    def simulate_rollout(self, initial_state, initial_action):
+        if self.env is None:
+            raise ValueError("Environment not set. Call set_environment() first.")
+
+        sim_env = copy.deepcopy(self.env)
         total_reward = 0
 
-        if hasattr(env, "available_actions") and isinstance(
-            env.available_actions(), dict
+        if hasattr(sim_env, "available_actions") and isinstance(
+            sim_env.available_actions(), dict
         ):
             available_actions = sim_env.available_actions()
             _, reward, done = sim_env.step(available_actions[initial_action])
@@ -54,13 +58,13 @@ class RandomRollout:
 
         return total_reward
 
-    def choose_action(self, env, state, available_actions):
+    def choose_action(self, state, available_actions):
         action_rewards = {}
 
         for action in available_actions:
             rewards = []
             for _ in range(self.num_rollouts):
-                reward = self.simulate_rollout(env, state, action)
+                reward = self.simulate_rollout(state, action)
                 rewards.append(reward)
 
             mean_reward = np.mean(rewards)
@@ -78,6 +82,7 @@ class RandomRollout:
         max_steps=500,
         test_intervals=[1000, 10_000, 100_000, 1000000],
     ):
+        self.set_environment(env)
         scores_list = []
         episode_times = []
         agent_action_times = []
@@ -117,7 +122,7 @@ class RandomRollout:
 
                     if hasattr(env, "current_player") and env.current_player == 1:
                         start_time_action = time.time()
-                        action = self.choose_action(env, state, keys)
+                        action = self.choose_action(state, keys)
                         end_time_action = time.time()
                         step_count += 1
                     else:
@@ -178,6 +183,7 @@ class RandomRollout:
         return np.mean(scores_list)
 
     def test(self, env, episodes=200, max_steps=10):
+        self.set_environment(env)
         scores_list = []
         episode_times = []
         action_times = []
@@ -185,6 +191,7 @@ class RandomRollout:
         step_by_game = []
         win_game = 0
         total_reward = 0
+
         for e in tqdm(range(episodes), desc="Testing"):
             episode_start_time = time.time()
             episode_action_times = []
@@ -209,7 +216,7 @@ class RandomRollout:
 
                     if hasattr(env, "current_player") and env.current_player == 1:
                         action_start_time = time.time()
-                        action = self.choose_action(env, state, available_actions)
+                        action = self.choose_action(state, available_actions)
                         action_end_time = time.time()
                         episode_action_times.append(action_end_time - action_start_time)
                         actions_list.append(action)
@@ -230,9 +237,11 @@ class RandomRollout:
 
                 if not done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+
             step_by_game.append(step_count)
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+
         avg_reward = total_reward / episodes
         print(
             f"Test Results:\n"

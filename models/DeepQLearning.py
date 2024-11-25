@@ -293,7 +293,9 @@ class DQL:
             "epsilon_decay": self.epsilon_decay,
         }
 
-        with open(f"agents/{self.__class__.__name__}_{game_name}._params.pkl", "wb") as f:
+        with open(
+            f"agents/{self.__class__.__name__}_{game_name}._params.pkl", "wb"
+        ) as f:
             pickle.dump(params, f)
 
         print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")
