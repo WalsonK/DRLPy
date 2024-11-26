@@ -16,11 +16,11 @@ class DQL:
         self,
         state_size,
         action_size,
-        learning_rate=0.001,
+        learning_rate=0.01,
         gamma=0.95,
         epsilon=1.0,
         epsilon_min=0.01,
-        epsilon_decay=0.995,
+        epsilon_decay=0.99995,
     ):
         self.state_size = state_size
         self.action_size = action_size
