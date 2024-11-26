@@ -179,7 +179,6 @@ def train_agent(model, env, name, max_steps, episodes, intervals=None):
     print(f"Starting training with {model.__class__.__name__}")
     r = model.train(env, episodes=episodes, max_steps=max_steps, test_intervals=intervals)
     print(f"Trained Mean score: {r}")
-    model.test(env, episodes=episodes, max_steps=max_steps)
 
     if input("Do you want to save the model? (y/n): \n> ").strip().lower() == "y":
         model.save_model(name)
