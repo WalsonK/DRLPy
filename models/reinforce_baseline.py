@@ -111,7 +111,11 @@ class ReinforceBaseline:
                         environment,
                         10,
                         max_steps,
-                        model_name=environment.__class__.__name__ + "_" + str(episode + 1)
+                        model_name=environment.__class__.__name__ + "_" + str(episode + 1),
+                        is_saving_after_train=True
+                    )
+                    file.write(
+                        f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
                     )
 
             file.write("\nTraining Complete\n")
@@ -137,7 +141,7 @@ class ReinforceBaseline:
         )
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps, model_name=None):
+    def test(self, environment, episodes, max_steps, model_name=None, is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
@@ -191,8 +195,9 @@ class ReinforceBaseline:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+        win_rate = win_games / episodes
         print(
-            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
+            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {win_rate * 100:.2f}%"
         )
         # Print metrics
         print_metrics(
@@ -206,10 +211,11 @@ class ReinforceBaseline:
             env_name=environment.__class__.__name__,
         )
 
-        model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
-        self.save_model(environment.__class__.__name__)
+        if is_saving_after_train:
+            model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            self.save_model(model_name)
 
-        return (win_games / episodes) * 100, np.mean(scores_list)
+        return win_rate, np.mean(scores_list)
 
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []

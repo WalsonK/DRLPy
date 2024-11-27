@@ -162,9 +162,10 @@ class RandomRollout:
                 if test_intervals is not None and (e + 1) in test_intervals:
                     avg_score = self.test(
                         env,
-                        episodes=100,
+                        episodes=10,
                         max_steps=max_steps,
-                        model_name=env.__class__.__name__ + "_" + str(e + 1)
+                        model_name=env.__class__.__name__ + "_" + str(e + 1),
+                        is_saving_after_train=True
                     )
                     file.write(
                         f"Test after {e + 1} episodes: Average score: {avg_score}\n"
@@ -187,7 +188,7 @@ class RandomRollout:
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10, model_name=None):
+    def test(self, env, episodes=200, max_steps=10, model_name=None,  is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
@@ -267,8 +268,9 @@ class RandomRollout:
         )
         win_rate = win_game / episodes
 
-        model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
-        self.save_model(model_name)
+        if is_saving_after_train:
+            model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            self.save_model(model_name)
 
         return win_rate, avg_reward
 

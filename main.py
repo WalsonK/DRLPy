@@ -83,7 +83,6 @@ def select_agent():
 
 def get_unique_version(model_name, environment_name):
     folder_path = "agents/"
-    environment_name = environment_name.capitalize()
     file_pattern = re.compile(rf"^{re.escape(model_name)}_{re.escape(environment_name)}_(\d+)*")
 
     iterations = []
@@ -179,10 +178,11 @@ def train_agent(model, env, name, max_steps, episodes, intervals=None):
     print(f"Starting training with {model.__class__.__name__}")
     r = model.train(env, episodes=episodes, max_steps=max_steps, test_intervals=intervals)
     print(f"Trained Mean score: {r}")
-    model.test(env, episodes=episodes, max_steps=max_steps)
+    model.test(env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False)
 
     if input("Do you want to save the model? (y/n): \n> ").strip().lower() == "y":
-        model.save_model(name)
+        save_name = env.__class__.__name__ + "_" + str(episodes)
+        model.save_model(save_name)
 
     if (
         input(
@@ -197,24 +197,26 @@ def train_agent(model, env, name, max_steps, episodes, intervals=None):
 
 def test_agent(model, env, name, max_steps, episodes):
     """Test the agent"""
-    its = get_unique_version(model.__class__.__name__, name)
+    its = get_unique_version(model.__class__.__name__, env.__class__.__name__)
     if len(its) > 0:
         print("Available iterations for testing:")
         for index, iteration in enumerate(its):
             print(f" - {iteration}")
         it = int(input("> "))
-        name = name + "_" + str(it)
-    agent.load_model(name)
-    agent.test(env, episodes=episodes, max_steps=max_steps)
-    if (
-        input(
-            f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
-        )
-        .strip()
-        .lower()
-        == "y"
-    ):
-        simulate_game(env, model=model, manual=True)
+        name = env.__class__.__name__ + "_" + str(it)
+        agent.load_model(name)
+        agent.test(env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False)
+        if (
+            input(
+                f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
+            )
+            .strip()
+            .lower()
+            == "y"
+        ):
+            simulate_game(env, model=model, manual=True)
+    else:
+        print("No available models for testing")
 
 
 if __name__ == "__main__":
