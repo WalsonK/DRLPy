@@ -227,7 +227,7 @@ class ReinforceActorCritic:
 
                 episode_end_time = time.time()
                 if not done and step_count >= max_steps:
-                    scores_list.append(environment.get_score())
+                    scores_list.append(environment.get_reward())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
