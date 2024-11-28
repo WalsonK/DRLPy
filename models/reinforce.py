@@ -90,7 +90,6 @@ class Reinforce:
                         }
                     )
                 scores_list.append(G[-1])
-                print(episode_loss)
                 losses_per_episode.append(episode_loss)
                 pbar.close()
 
@@ -196,6 +195,8 @@ class Reinforce:
             is_training=False,
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__,
+            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
+            else ""
         )
 
         if is_saving_after_train:

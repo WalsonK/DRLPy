@@ -21,14 +21,16 @@ def print_metrics(
     is_training: bool = True,
     algo_name="",
     env_name="",
+    metric_for=""
 ):
     # scores metrics
     if scores:
         plt.plot(episodes, scores)
         plt.title(
-            f"Evolution of scores per episode in Training of {env_name} for {algo_name} in {episodes.stop} episodes"
+            f"Evolution of scores per episode in Training of {env_name} \nfor {algo_name} in {episodes.stop} episodes"
             if is_training
-            else f"Evolution of scores per episode in Test of {env_name} for {algo_name} in {episodes.stop} episodes"
+            else f"Evolution of scores per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
+                 f"for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Score")
@@ -39,9 +41,10 @@ def print_metrics(
     if episode_times:
         plt.plot(episodes, episode_times)
         plt.title(
-            f"Evolution of episode time in Training of {env_name} for {algo_name} in {episodes.stop} episodes"
+            f"Evolution of episode time in Training of {env_name} \nfor {algo_name} in {episodes.stop} episodes"
             if is_training
-            else f"Evolution of episode time in Test of {env_name} for {algo_name} in {episodes.stop} episodes"
+            else f"Evolution of episode time in Test of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
+                 f"for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Time (s)")
@@ -52,9 +55,11 @@ def print_metrics(
     if action_times:
         plt.plot(episodes, action_times)
         plt.title(
-            f"Evolution of action mean time per episode in Training of {env_name} for {algo_name} in {episodes.stop} episodes"
+            f"Evolution of action mean time per episode in Training of {env_name} \nfor {algo_name} in {episodes.stop} "
+            f"episodes"
             if is_training
-            else f"Evolution of action mean time per episode in Test of {env_name} for {algo_name} in {episodes.stop} episodes"
+            else f"Evolution of action mean time per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} "
+                 f"episodes for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Average action time (s)")
@@ -67,9 +72,11 @@ def print_metrics(
         plt.figure(figsize=(14, 10))
         plt.barh(list(counts.keys()), list(counts.values()))
         plt.title(
-            f"Distribution of action take by the agent in Training of {env_name} for {algo_name} in {episodes.stop} episodes"
+            f"Distribution of action take by the agent in Training of {env_name} \nfor {algo_name} in {episodes.stop} "
+            f"episodes"
             if is_training
-            else f"Distribution of action take by the agent in Test of {env_name} for {algo_name} in {episodes.stop} episodes"
+            else f"Distribution of action take by the agent in Test of {env_name} \nfor {algo_name} in {episodes.stop} "
+                 f"episodes for {metric_for}"
         )
         plt.xlabel("Counts")
         plt.ylabel("Action")
@@ -83,9 +90,11 @@ def print_metrics(
     if steps_per_game:
         plt.plot(episodes, steps_per_game)
         plt.title(
-            f"Evolution of agent step per episode in Training of {env_name} for {algo_name} in {episodes.stop} episodes"
+            f"Evolution of agent step per episode in Training of {env_name} \nfor {algo_name} in {episodes.stop} "
+            f"episodes"
             if is_training
-            else f"Evolution of agent step per episode in Test of {env_name} for {algo_name} in {episodes.stop} episodes"
+            else f"Evolution of agent step per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} "
+                 f"episodes for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Nombre de step")
@@ -102,9 +111,10 @@ def print_metrics(
         else:
             plt.plot(losses)
         plt.title(
-            f"Losses evolution per episode in Training of {env_name} for {algo_name} in {episodes.stop} episodes"
+            f"Losses evolution per episode in Training of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
             if is_training
-            else f"Losses evolution per episode in Test of {env_name} for {algo_name} in {episodes.stop} episodes"
+            else f"Losses evolution per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
+                 f"for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Losses")

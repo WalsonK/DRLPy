@@ -403,6 +403,8 @@ class PPO:
             actions=actions_list,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
+            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
+            else ""
         )
         return win_rate, avg_reward
 
