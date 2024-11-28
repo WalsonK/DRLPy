@@ -86,7 +86,7 @@ class TabularQLearning:
         actions_list = []
         agent_action_times = []
 
-        with open(f"training_results_TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+        with open(f"report/TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
