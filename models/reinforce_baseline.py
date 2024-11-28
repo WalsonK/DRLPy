@@ -29,7 +29,7 @@ class ReinforceBaseline:
         )
         return model
 
-    def train(self, environment, episodes, max_steps):
+    def train(self, environment, episodes, max_steps, test_intervals=[1000, 10_000, 100_000, 1_000_000]):
         scores_list = []
         episode_times = []
         action_times = []
@@ -106,6 +106,18 @@ class ReinforceBaseline:
                 policy_losses_per_episode.append(episode_policy_loss)
                 baseline_losses_per_episode.append(episode_baseline_loss)
 
+                if test_intervals is not None and (episode + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(
+                        environment,
+                        10,
+                        max_steps,
+                        model_name=environment.__class__.__name__ + "_" + str(episode + 1),
+                        is_saving_after_train=True
+                    )
+                    file.write(
+                        f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
+                    )
+
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -125,11 +137,11 @@ class ReinforceBaseline:
             steps_per_game,
             losses_per_episode,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
         )
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps):
+    def test(self, environment, episodes, max_steps, model_name=None, is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
@@ -143,7 +155,9 @@ class ReinforceBaseline:
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner, reward, a_list, a_times = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = environment.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_games += 1
                 episode_end_time = time.time()
@@ -177,12 +191,14 @@ class ReinforceBaseline:
 
                 episode_end_time = time.time()
                 if not done and step_count >= max_steps:
+                    scores_list.append(environment.get_reward())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+        win_rate = win_games / episodes
         print(
-            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
+            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {win_rate * 100:.2f}%"
         )
         # Print metrics
         print_metrics(
@@ -193,8 +209,16 @@ class ReinforceBaseline:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
+            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
+            else ""
         )
+
+        if is_saving_after_train:
+            model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            self.save_model(model_name)
+
+        return win_rate, np.mean(scores_list)
 
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []

@@ -81,6 +81,7 @@ class DQL:
         episode_times = []
         agent_action_times = []
         action_list = []
+        step_by_episode = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -155,27 +156,28 @@ class DQL:
                     )
 
                     if env.done:
-                        scores_list.append(total_reward)
-                        losses_per_episode.append(
-                            np.mean(episode_losses) if episode_losses else 0
-                        )
                         break
 
                 if not env.done and step_count >= max_steps:
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
-                    scores_list.append(total_reward)
-                    losses_per_episode.append(
-                        np.mean(episode_losses) if episode_losses else 0
-                    )
 
+                losses_per_episode.append(
+                    np.mean(episode_losses) if episode_losses else 0
+                )
                 end_time = time.time()
                 episode_times.append(end_time - start_time)
+                step_by_episode.append(step_count)
+                scores_list.append(total_reward)
 
                 self.update_epsilon()
                 pbar.close()
-                if (e + 1) in test_intervals:
+                if test_intervals is not None and (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
-                        env, episodes=200, max_steps=max_steps
+                        env,
+                        episodes=10,
+                        max_steps=max_steps,
+                        model_name=env.__class__.__name__ + "_" + str(e + 1),
+                        is_saving_after_train=True
                     )
                     file.write(
                         f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
@@ -192,18 +194,20 @@ class DQL:
             scores=scores_list,
             episode_times=episode_times,
             losses=losses_per_episode,
+            steps_per_game=step_by_episode,
             actions=action_list,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10):
+    def test(self, env, episodes=200, max_steps=10, model_name=None, is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
         for e in tqdm(range(episodes), desc="Testing"):
@@ -215,7 +219,9 @@ class DQL:
             episode_reward = 0
 
             if hasattr(env, "play_game"):  # Pour Farkle
-                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_game += 1
                 episode_end_time = time.time()
@@ -252,6 +258,7 @@ class DQL:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
         avg_reward = total_reward / episodes
         print(
             f"Test Results:\n"
@@ -264,13 +271,21 @@ class DQL:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
+            action_times=action_times,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
+            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
+            else ""
         )
         win_rate = win_game / episodes
+
+        if is_saving_after_train:
+            model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            self.save_model(model_name)
+
         return win_rate, avg_reward
 
     def save_model(self, game_name):
@@ -290,7 +305,9 @@ class DQL:
             "epsilon_decay": self.epsilon_decay,
         }
 
-        with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
+        with open(
+            f"agents/{self.__class__.__name__}_{game_name}._params.pkl", "wb"
+        ) as f:
             pickle.dump(params, f)
 
         print(f"Agent {self.__class__.__name__} pour le jeu {game_name} sauvegardé.")

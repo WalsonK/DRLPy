@@ -28,7 +28,7 @@ class Reinforce:
         )
         return model
 
-    def train(self, environment, episodes, max_steps):
+    def train(self, environment, episodes, max_steps, test_intervals=[1000, 10_000, 100_000, 1_000_000]):
         scores_list = []
         episode_times = []
         action_times = []
@@ -37,8 +37,8 @@ class Reinforce:
         losses_per_episode = []
 
         with open(
-            f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
-            "a",
+                f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
+                "a",
         ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
@@ -90,9 +90,20 @@ class Reinforce:
                         }
                     )
                 scores_list.append(G[-1])
-                print(episode_loss)
                 losses_per_episode.append(episode_loss)
                 pbar.close()
+
+                if test_intervals is not None and (episode + 1) in test_intervals:
+                    win_rate, avg_reward = self.test(
+                        environment,
+                        10,
+                        max_steps,
+                        model_name=environment.__class__.__name__ + "_" + str(episode + 1),
+                        is_saving_after_train=True
+                    )
+                    file.write(
+                        f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
+                    )
 
             file.write("\nTraining Complete\n")
             file.write(
@@ -110,12 +121,12 @@ class Reinforce:
             steps_per_game,
             losses_per_episode,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
         )
 
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps):
+    def test(self, environment, episodes, max_steps, model_name=None, is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
@@ -129,7 +140,9 @@ class Reinforce:
             step_count = 0
 
             if isinstance(environment, Farkle):
-                winner, reward, a_list, a_times = environment.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = environment.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_games += 1
                 episode_end_time = time.time()
@@ -142,8 +155,8 @@ class Reinforce:
                     available_actions = environment.available_actions()
 
                     if (
-                        hasattr(environment, "current_player")
-                        and environment.current_player == 1
+                            hasattr(environment, "current_player")
+                            and environment.current_player == 1
                     ):
                         action_start_time = time.time()
                         action = self.choose_action(state, available_actions)
@@ -163,13 +176,14 @@ class Reinforce:
 
                 episode_end_time = time.time()
                 if not done and step_count >= max_steps:
-                    scores_list.append(environment.get_score())
+                    scores_list.append(environment.get_reward())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+        win_rate = win_games / episodes
         print(
-            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {(win_games / episodes) * 100:.2f}%"
+            f"Winrate:\n- {win_games} game wined\n- {episodes} game played\n- Accuracy : {win_rate * 100:.2f}%"
         )
         # Print metrics
         print_metrics(
@@ -180,8 +194,16 @@ class Reinforce:
             actions=actions_list,
             is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=environment.__class__.__name__
+            env_name=environment.__class__.__name__,
+            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
+            else ""
         )
+
+        if is_saving_after_train:
+            model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            self.save_model(model_name)
+
+        return win_rate, np.mean(scores_list)
 
     def generate_episode(self, environment, max_step):
         states, actions, rewards, agent_action_times = [], [], [], []
@@ -199,8 +221,8 @@ class Reinforce:
             )
 
             if (
-                hasattr(environment, "current_player")
-                and environment.current_player == 1
+                    hasattr(environment, "current_player")
+                    and environment.current_player == 1
             ):
                 start_time = time.time()
                 action = self.choose_action(state, keys)
@@ -216,8 +238,8 @@ class Reinforce:
             )
 
             if (
-                hasattr(environment, "current_player")
-                and environment.current_player == 1
+                    hasattr(environment, "current_player")
+                    and environment.current_player == 1
             ):
                 states.append(state)
                 actions.append(action)
@@ -258,7 +280,7 @@ class Reinforce:
 
         # Mise à jour manuelle de chaque variable de theta en appliquant le taux d'apprentissage
         for i, var in enumerate(self.theta.trainable_variables):
-            var.assign_add(self.learning_rate * (self.gamma**t) * G_t * grads[i])
+            var.assign_add(self.learning_rate * (self.gamma ** t) * G_t * grads[i])
 
         return loss.numpy()
 
@@ -272,7 +294,7 @@ class Reinforce:
         params = {"learning_rate": self.learning_rate, "gamma": self.gamma}
 
         with open(
-            f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
+                f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
         ) as f:
             pickle.dump(params, f)
 
@@ -292,12 +314,11 @@ class Reinforce:
             self.learning_rate = params["learning_rate"]
             self.gamma = params["gamma"]
 
+# _env = Farkle(printing=False)
+# _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
 
-#_env = Farkle(printing=False)
-#_model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)
-
-#_model.train(environment=_env, episodes=2, max_steps=300)
-#_model.test(environment=_env, episodes=10, max_steps=200)
+# _model.train(environment=_env, episodes=2, max_steps=300)
+# _model.test(environment=_env, episodes=10, max_steps=200)
 # name = "farkle_test_save_load"
 # _model.save_model(name)
 # model_test = Reinforce(4, 4, learning_rate=10)

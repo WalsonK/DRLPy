@@ -17,16 +17,16 @@ from tools import *
 
 class DQN_with_replay:
     def __init__(
-            self,
-            state_size,
-            action_size,
-            learning_rate=0.01,
-            gamma=0.95,
-            epsilon=1.0,
-            epsilon_min=0.01,
-            epsilon_decay=0.995,
-            batch_size=64,
-            memory_size=2000,
+        self,
+        state_size,
+        action_size,
+        learning_rate=0.01,
+        gamma=0.95,
+        epsilon=1.0,
+        epsilon_min=0.01,
+        epsilon_decay=0.995,
+        batch_size=64,
+        memory_size=2000,
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -97,7 +97,8 @@ class DQN_with_replay:
         losses_per_episode = []
         episode_times = []
         agent_action_times = []
-        action_list = []
+        actions_list = []
+        step_by_episode = []
 
         with open(
             f"report/training_results_{self.__class__.__name__}_{env.__class__.__name__}_{episodes}episodes.txt",
@@ -118,7 +119,7 @@ class DQN_with_replay:
                     unit="Step",
                     bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
                     postfix=f"total reward: {total_reward}, Epsilon : {self.epsilon:.4f}, agent Step: {step_count}, "
-                            f"Average Action Time: 0",
+                    f"Average Action Time: 0",
                     dynamic_ncols=True,
                 )
 
@@ -138,7 +139,7 @@ class DQN_with_replay:
                         action = self.choose_action(state, keys)
                         action_end_time = time.time()
                         agent_action_times.append(action_end_time - action_start_time)
-                        action_list.append(action)
+                        actions_list.append(action)
                         step_count += 1
                     else:
                         action = random.choice(keys)
@@ -171,7 +172,7 @@ class DQN_with_replay:
 
                 episode_duration = time.time() - start_time
                 episode_times.append(episode_duration)
-
+                step_by_episode.append(step_count)
                 episode_loss = self.replay()
                 losses_per_episode.append(episode_loss)
 
@@ -182,9 +183,14 @@ class DQN_with_replay:
 
                 self.update_epsilon()
                 pbar.close()
-                if (e + 1) in test_intervals:
+
+                if test_intervals is not None and (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
-                        env, episodes=200, max_steps=max_steps
+                        env,
+                        episodes=10,
+                        max_steps=max_steps,
+                        model_name=env.__class__.__name__ + "_" + str(e + 1),
+                        is_saving_after_train=True
                     )
                     file.write(
                         f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
@@ -200,19 +206,21 @@ class DQN_with_replay:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
+            steps_per_game=step_by_episode,
             losses=losses_per_episode,
-            actions=action_list,
+            actions=actions_list,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
         )
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10):
+    def test(self, env, episodes=200, max_steps=10, model_name=None, is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
         actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
         for e in trange(episodes, desc=f"Test"):
@@ -225,7 +233,9 @@ class DQN_with_replay:
             episode_reward = 0
 
             if isinstance(env, Farkle):
-                winner, reward, a_list, a_times = env.play_game(isBotGame=True, show=False, agentPlayer=self)
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
                 if winner == 0:
                     win_game += 1
                 episode_end_time = time.time()
@@ -263,6 +273,7 @@ class DQN_with_replay:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
 
         avg_reward = total_reward / episodes
         print(
@@ -274,12 +285,18 @@ class DQN_with_replay:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
-            action_times=action_times,
+            steps_per_game=step_by_episode,
             actions=actions_list,
-            is_training=False,
             algo_name=self.__class__.__name__,
-            env_name=env.__class__.__name__
+            env_name=env.__class__.__name__,
+            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
+            else ""
         )
+
+        if is_saving_after_train:
+            model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            self.save_model(model_name)
+
         return win_rate, avg_reward
 
     def save_model(self, game_name):
@@ -301,7 +318,7 @@ class DQN_with_replay:
         }
 
         with open(
-                f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
+            f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
         ) as f:
             pickle.dump(params, f)
 

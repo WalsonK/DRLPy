@@ -51,6 +51,9 @@ class LineWorld:
             return 1.0
         return 0.0
 
+    def get_reward(self):
+        return self.score()
+
     def is_game_over(self):
         return self.agent_position in self.terminal_positions
 

@@ -1,0 +1,6 @@
+Training Started
+Training with 20 episodes and max steps 400
+
+Training Complete
+Final Mean Score after 20 episodes: 0.2
+Total training time: 10.012917041778564 seconds

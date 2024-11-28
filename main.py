@@ -1,4 +1,6 @@
 import random
+import re
+import os
 from tqdm import tqdm
 
 from environement.farkle import Farkle
@@ -41,6 +43,7 @@ def select_game():
 
 def select_agent(s_size, a_size):
     """Set the agent from the user input"""
+
     agent_name = (
         int(
             input(
@@ -53,9 +56,11 @@ def select_agent(s_size, a_size):
                 "6 - Reinforce with baseline\n"
                 "7 - Reinforce with actor critic\n"
                 "8 - PPO\n"
+                "9 - RandomRollout\n"
                 "10- TabularQLearning\n"
                 "> "
             )
+
         )
     )
     if agent_name == 1:
@@ -73,12 +78,31 @@ def select_agent(s_size, a_size):
     elif agent_name == 7:
         model = models.ReinforceActorCritic(s_size, a_size)
     elif agent_name == 8:
-        model = models.PPO(s_size, a_size)
+         model = models.PPO(s_size, a_size)
+    elif agent_name == 9:
+        model = models.RandomRollout(s_size, a_size)
     elif agent_name == 10:
         model = models.TabularQLearning(s_size, a_size)
+        
     else:
         model = models.DQL(s_size, a_size)
     return model
+
+
+def get_unique_version(model_name, environment_name):
+    folder_path = "agents/"
+    file_pattern = re.compile(rf"^{re.escape(model_name)}_{re.escape(environment_name)}_(\d+)*")
+
+    iterations = []
+
+    for filename in os.listdir(folder_path):
+        match = file_pattern.match(filename)
+        if match:
+            it = int(match.group(1))
+            if it not in iterations:
+                iterations.append(it)
+
+    return sorted(iterations)
 
 
 def random_player(env):
@@ -104,12 +128,8 @@ def simulate_game(game, model=None, manual=False):
                         print("Your turn (Player).")
                         available_actions = game.available_actions()
                         action = manual_player(available_actions)
-                    elif isinstance(model, DQN_with_replay.DQN_with_replay):
-                        # **Model's Turn** (Model vs Random)
-                        print("Agent model's turn.")
-                        available_actions = game.available_actions()
-                        action = model.choose_action(state, available_actions)
-                    elif isinstance(model, DeepQLearning.DQL):
+                    elif any(isinstance(model, cls) for cls in vars(models).values() if isinstance(cls, type)):
+                        # elif isinstance(model, DQN_with_replay.DQN_with_replay):
                         # **Model's Turn** (Model vs Random)
                         print("Agent model's turn.")
                         available_actions = game.available_actions()
@@ -161,32 +181,60 @@ def manual_player(available_actions):
             print("Invalid input. Please enter a number.")
 
 
-def train_agent(model, env, name, max_steps, episodes):
+def train_agent(model, env, name, max_steps, episodes, intervals=None):
     """Train the agent"""
     print(f"Starting training with {model.__class__.__name__}")
-    r = model.train(env, episodes=episodes, max_steps=max_steps)
+    r = model.train(env, episodes=episodes, max_steps=max_steps, test_intervals=intervals)
     print(f"Trained Mean score: {r}")
-    model.test(env, episodes=episodes, max_steps=max_steps)
+    model.test(env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False)
 
     if input("Do you want to save the model? (y/n): \n> ").strip().lower() == "y":
-        model.save_model(name)
+        save_name = env.__class__.__name__ + "_" + str(episodes)
+        model.save_model(save_name)
 
-    if input(f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> ").strip().lower() == "y":
+    if (
+        input(
+            f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
+        )
+        .strip()
+        .lower()
+        == "y"
+    ):
         simulate_game(env, model=model, manual=True)
 
 
 def test_agent(model, env, name, max_steps, episodes):
     """Test the agent"""
-    agent.load_model(name)
-    agent.test(env, episodes=episodes, max_steps=max_steps)
-    if input(f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> ").strip().lower() == "y":
-        simulate_game(env, model=model, manual=True)
+    its = get_unique_version(model.__class__.__name__, env.__class__.__name__)
+    if len(its) > 0:
+        print("Available iterations for testing:")
+        for index, iteration in enumerate(its):
+            print(f" - {iteration}")
+        it = int(input("> "))
+        name = env.__class__.__name__ + "_" + str(it)
+        agent.load_model(name)
+        agent.test(env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False)
+        if (
+            input(
+                f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
+            )
+            .strip()
+            .lower()
+            == "y"
+        ):
+            simulate_game(env, model=model, manual=True)
+    else:
+        print("No available models for testing")
 
 
 if __name__ == "__main__":
     game, game_name, state_size, action_size = select_game()
 
-    mode = input("Do you want to play, train, or test? (play/train/test): \n> ").strip().lower()
+    mode = (
+        input("Do you want to play, train, or test? (play/train/test): \n> ")
+        .strip()
+        .lower()
+    )
     manual = mode == "play"
 
     episode = 2
@@ -195,12 +243,19 @@ if __name__ == "__main__":
     elif game_name == "lineworld":
         max_step = 5
     else:
-        max_step = 300
+        max_step = 400
 
     if mode == "train":
         episode = int(input("How many episodes you want to train?: \n> "))
+
+        iteration = None
+        if episode == 0:
+            user_input = input("Enter iterations as comma-separated values (e.g., 5, 10, 15, 20): ")
+            iteration = [int(x.strip()) for x in user_input.split(",")]
+            episode = iteration[-1]+1
         agent = select_agent(state_size, action_size)
-        train_agent(agent, game, game_name, max_step, episode)
+        train_agent(agent, game, game_name, max_step, episode, iteration)
+
     elif mode == "test":
         episode = int(input("How many episodes you want to test?: \n> "))
         agent = select_agent(state_size, action_size)

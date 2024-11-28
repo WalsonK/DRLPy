@@ -82,6 +82,9 @@ class GridWorld:
             return 1.0
         return 0.0
 
+    def get_reward(self):
+        return self.score()
+
     def is_game_over(self):
         return tuple(self.agent_pos) in self.terminal_positions
 
