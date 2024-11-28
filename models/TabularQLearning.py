@@ -117,7 +117,6 @@ class TabularQLearning:
                     )
 
                     action_time_start = time.time()
-
                     action = self.choose_action(state, keys)
                     action_time_end = time.time()
 
@@ -182,37 +181,86 @@ class TabularQLearning:
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10):
+    def test(self, env, episodes=200, max_steps=10, model_name=None):
+        scores_list = []
+        episode_times = []
+        action_times = []
+        actions_list = []
+        step_by_episode = []
         win_game = 0
         total_reward = 0
         for e in tqdm(range(episodes), desc="Testing"):
+            episode_start_time = time.time()
+            episode_action_times = []
             state = env.reset()
             done = False
             step_count = 0
             episode_reward = 0
 
-            while not env.done and step_count < max_steps:
-                available_actions = env.available_actions()
-                action = self.choose_action(state, available_actions)
-                next_state, reward, done = env.step(action)
-                episode_reward += reward
-                state = next_state
-
-                if done and hasattr(env, "winner") and env.winner == 1.0:
+            if hasattr(env, "play_game"):  # Pour Farkle
+                winner, reward, a_list, a_times = env.play_game(
+                    isBotGame=True, show=False, agentPlayer=self
+                )
+                if winner == 0:
                     win_game += 1
-                    break
+                episode_end_time = time.time()
+                actions_list = a_list
+                episode_action_times = a_times
+                scores_list.append(reward)
+            else:
+                while not env.done and step_count < max_steps:
+                    available_actions = env.available_actions()
 
-            total_reward += episode_reward
+                    if hasattr(env, "current_player") and env.current_player == 1:
+                        action_start_time = time.time()
+                        action = self.choose_action(state, available_actions)
+                        action_end_time = time.time()
+                        episode_action_times.append(action_end_time - action_start_time)
+                        actions_list.append(action)
+                        step_count += 1
+                    else:
+                        action = np.random.choice(available_actions)
 
+                    next_state, reward, done = env.step(action)
+                    episode_reward += reward
+                    state = next_state
+
+                    if env.done and hasattr(env, "winner") and env.winner == 1.0:
+                        win_game += 1
+                        break
+
+                total_reward += episode_reward
+                episode_end_time = time.time()
+
+                if not done and step_count >= max_steps:
+                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
+
+            action_times.append(np.mean(episode_action_times))
+            episode_times.append(episode_end_time - episode_start_time)
+            step_by_episode.append(step_count)
         avg_reward = total_reward / episodes
-        win_rate = win_game / episodes
         print(
             f"Test Results:\n"
             f"- Games won: {win_game}/{episodes}\n"
             f"- Win rate: {(win_game / episodes) * 100:.2f}%\n"
             f"- Average reward per episode: {avg_reward:.2f}"
         )
+        # Print metrics
+        print_metrics(
+            episodes=range(episodes),
+            scores=scores_list,
+            episode_times=episode_times,
+            steps_per_game=step_by_episode,
+            actions=actions_list,
+            action_times=action_times,
+            is_training=False,
+            algo_name=self.__class__.__name__,
+            env_name=env.__class__.__name__,
+        )
+        win_rate = win_game / episodes
 
+        model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+        self.save_model(model_name)
         return win_rate, avg_reward
 
     def save_model(self, game_name):
