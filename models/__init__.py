@@ -7,6 +7,7 @@ from .reinforce import Reinforce
 from .reinforce_baseline import ReinforceBaseline
 from .reinforce_actor_critic import ReinforceActorCritic
 from .PPO import PPO
+from .TabularQLearning import TabularQLearning
 from .RandomRollout import RandomRollout
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "ReinforceBaseline",
     "ReinforceActorCritic",
     "PPO",
+    "TabularQLearning"
     "RandomRollout",
 ]
