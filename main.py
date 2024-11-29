@@ -57,7 +57,7 @@ def select_agent(s_size, a_size):
                 "7 - Reinforce with actor critic\n"
                 "8 - PPO\n"
                 "9 - RandomRollout\n"
-                "10- TabularQLearning\n"
+                "10 - TabularQLearning\n"
                 "> "
             )
 

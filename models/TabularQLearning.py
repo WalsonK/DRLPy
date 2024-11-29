@@ -163,7 +163,13 @@ class TabularQLearning:
                 pbar.close()
 
                 if test_intervals is not None and (e + 1) in test_intervals:
-                    win_rate, avg_reward = self.test(env, episodes=200, max_steps=max_steps, is_saving_after_train=True)
+                    win_rate, avg_reward = self.test(
+                        env,
+                        episodes=10,
+                        max_steps=max_steps,
+                        model_name=env.__class__.__name__ + "_" + str(e + 1),
+                        is_saving_after_train=True
+                    )
                     file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
 
             file.write("\nTraining Complete\n")
@@ -176,12 +182,12 @@ class TabularQLearning:
                 episode_times=episode_times ,
                 actions=actions_list,
                 algo_name=self.__class__.__name__,
-                env_name = env.__class__.__name__
+                env_name=env.__class__.__name__
         )
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=200, max_steps=10, model_name=None, is_saving_after_train=False):
+    def test(self, env, episodes=10, max_steps=10, model_name=None, is_saving_after_train=False):
         scores_list = []
         episode_times = []
         action_times = []
@@ -269,7 +275,7 @@ class TabularQLearning:
 
     def save_model(self, game_name):
         os.makedirs("agents", exist_ok=True)
-        with open(f"agents/{game_name}_q_table.pkl", "wb") as f:
+        with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
             params = {
                 "state_size" : self.state_size,
                 "action_size" : self.action_size,
@@ -282,10 +288,10 @@ class TabularQLearning:
                 "state_to_index" : self.state_to_index,
             }
             pickle.dump(params, f)
-        print(f"Q-table saved as '{game_name}'.")
+        print(f"Q-table saved as '{self.__class__.__name__}_{game_name}'.")
 
     def load_model(self, game_name):
-        model_path = f"agents/{game_name}_q_table.pkl"
+        model_path = f"agents/{self.__class__.__name__}_{game_name}.pkl"
         if os.path.exists(model_path):
             with open(model_path, "rb") as f:
                 params = pickle.load(f)
