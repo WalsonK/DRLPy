@@ -51,21 +51,20 @@ class ReinforceActorCritic:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            for episode in range(episodes):
+            pbar = tqdm(
+                range(episodes),
+                total=episodes,
+                unit="episodes",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, agent Step: 0, Average Action Time: 0",
+            )
+            for episode in pbar:
                 state = environment.reset()
                 state = np.expand_dims(state, axis=0)
                 step_count = 0
                 importance = 1
                 baseline = self.baseline.predict(state, verbose=0)[0][0]
 
-                pbar = tqdm(
-                    total=max_steps,
-                    desc=f"Episode {episode + 1}/ {episodes}",
-                    unit="Step",
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"total reward: 0, agent Step: {step_count}, Average Action Time: 0",
-                    dynamic_ncols=True,
-                )
                 agent_action_times = []
                 episode_policy_loss = 0
                 episode_baseline_loss = 0
@@ -81,7 +80,7 @@ class ReinforceActorCritic:
                         else available_actions
                     )
 
-                    if (
+                    if(
                         hasattr(environment, "current_player")
                         and environment.current_player == 1
                     ):
@@ -118,20 +117,19 @@ class ReinforceActorCritic:
                     state = next_state
                     baseline = next_baseline
 
-                    pbar.update(1)
-                    pbar.set_postfix(
-                        {
-                            "Reward": reward,
-                            "Agent Step": step_count,
-                            "Policy loss": policy_loss,
-                            "Baseline loss": baseline_loss,
-                            "Average Action Time": np.mean(agent_action_times)
-                            if len(agent_action_times) > 0
-                            else 0,
-                        }
-                    )
-
                     if done:
+                        pbar.update(1)
+                        pbar.set_postfix(
+                            {
+                                "Reward": reward,
+                                "Agent Step": step_count,
+                                "Policy loss": episode_policy_loss,
+                                "Baseline loss": episode_baseline_loss,
+                                "Average Action Time": np.mean(agent_action_times)
+                                if len(agent_action_times) > 0
+                                else 0,
+                            }
+                        )
                         episode_end_time = time.time()
                         episode_times.append(episode_end_time - episode_start_time)
                         scores_list.append(reward)
@@ -140,7 +138,6 @@ class ReinforceActorCritic:
                         policy_losses_per_episode.append(episode_policy_loss)
                         baseline_losses_per_episode.append(episode_baseline_loss)
 
-                pbar.close()
 
                 if test_intervals is not None and (episode + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
@@ -154,6 +151,7 @@ class ReinforceActorCritic:
                         f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
                     )
 
+            pbar.close()
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -225,9 +223,10 @@ class ReinforceActorCritic:
                         win_games += 1
                         break
 
+                scores_list.append(environment.get_reward())
                 episode_end_time = time.time()
+
                 if not done and step_count >= max_steps:
-                    scores_list.append(environment.get_reward())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)

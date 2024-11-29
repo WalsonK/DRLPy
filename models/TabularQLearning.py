@@ -90,20 +90,18 @@ class TabularQLearning:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
+            pbar = tqdm(
+                range(episodes),
+                total=episodes,
+                unit="episodes",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, agent Step: 0, Epsilon: {self.epsilon:.4f}, Average Action Time: 0",
+            )
             for e in range(episodes):
                 start_time = time.time()
                 state = env.reset()
                 total_reward = 0
                 step_count = 0
-
-                pbar = tqdm(
-                    total=max_steps,
-                    desc=f"Episode {e + 1}/{episodes}",
-                    unit="Step",
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"Total Reward: {total_reward}, Epsilon: {self.epsilon:.4f}",
-                    dynamic_ncols=True,
-                )
 
                 if isinstance(env, Farkle):
                     env.roll_dice()
@@ -135,23 +133,8 @@ class TabularQLearning:
                     state = next_state
                     total_reward += reward
                     step_count += 1
-                    pbar.update(1)
-
-                    pbar.set_postfix(
-                        {
-                            "Total Reward": total_reward,
-                            "Epsilon": self.epsilon,
-                            "Agent Step": step_count,
-                            "Average Action Time": np.mean(agent_action_times)
-                            if len(agent_action_times) > 0
-                            else 0,
-                        }
-                    )
-
-                    pbar.set_postfix({"Total Reward": total_reward, "Epsilon": self.epsilon})
 
                     if env.done:
-
                         break
 
                 end_time = time.time()
@@ -160,7 +143,17 @@ class TabularQLearning:
 
                 self.update_epsilon()
 
-                pbar.close()
+                pbar.update(1)
+                pbar.set_postfix(
+                    {
+                        "Total Reward": total_reward,
+                        "Epsilon": self.epsilon,
+                        "Agent Step": step_count,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                    }
+                )
 
                 if test_intervals is not None and (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
@@ -172,6 +165,7 @@ class TabularQLearning:
                     )
                     file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
 
+            pbar.close()
             file.write("\nTraining Complete\n")
             file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
