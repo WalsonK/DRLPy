@@ -160,7 +160,7 @@ class RandomRollout:
                 pbar.close()
 
                 if test_intervals is not None and (e + 1) in test_intervals:
-                    avg_score = self.test(
+                    win_rate, avg_reward = self.test(
                         env,
                         episodes=10,
                         max_steps=max_steps,
@@ -168,7 +168,7 @@ class RandomRollout:
                         is_saving_after_train=True
                     )
                     file.write(
-                        f"Test after {e + 1} episodes: Average score: {avg_score}\n"
+                        f"Test after {e + 1} episodes: Average score: {avg_reward} | Win rate: {win_rate}\n"
                     )
 
             file.write("\nTraining Complete\n")
