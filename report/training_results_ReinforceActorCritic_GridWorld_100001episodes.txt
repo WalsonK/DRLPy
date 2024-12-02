@@ -1,0 +1,4 @@
+Training Started
+Training with 100001 episodes and max steps 10
+Test after 1000 episodes: Average score: 0.0, Win rate: 0.0
+Test after 10000 episodes: Average score: 0.0, Win rate: 0.0

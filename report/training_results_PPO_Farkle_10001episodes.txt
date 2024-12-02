@@ -1,0 +1,2 @@
+Training Started
+Training with 10001 episodes and max steps 400
