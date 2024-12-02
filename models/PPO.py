@@ -374,11 +374,11 @@ class PPO:
 
                 episode_end_time = time.time()
                 total_reward += episode_reward
+                scores_list.append(total_reward)
+                step_by_episode.append(step_count)
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
-            scores_list.append(total_reward)
-            step_by_episode.append(step_count)
 
         win_rate = win_game / episodes
         avg_reward = total_reward / episodes
