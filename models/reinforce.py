@@ -24,7 +24,7 @@ class Reinforce:
         model.add(Dense(action_size, activation="linear"))
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate),
-            loss="mse",
+            loss=tf.keras.losses.MeanSquaredError(),
         )
         return model
 
