@@ -1,0 +1,5 @@
+Training Started
+Training with 1000001 episodes and max steps 5
+Test after 1000 episodes: Average score: 0.99, Win rate: 0.995
+Test after 10000 episodes: Average score: 1.0, Win rate: 1.0
+Test after 100000 episodes: Average score: 1.0, Win rate: 1.0
