@@ -116,21 +116,20 @@ class PPO:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            for e in range(episodes):
+            pbar = tqdm(
+                range(episodes),
+                total=episodes,
+                unit="episodes",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, agent Step: 0, Average Action Time: 0",
+            )
+
+            for e in pbar:
                 start_time = time.time()
                 state = env.reset()
                 total_reward = 0
                 step_count = 0
                 episode_losses = []
-
-                pbar = tqdm(
-                    total=max_steps,
-                    desc=f"Episode {e + 1}/{episodes}",
-                    unit="Step",
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"Total Reward: {total_reward}, Agent Step: {step_count}, Average Action Time: 0",
-                    dynamic_ncols=True,
-                )
 
                 states, actions, rewards, dones, values, log_probs = (
                     [],
@@ -174,16 +173,6 @@ class PPO:
 
                     step_count += 1
                     total_reward += reward
-                    pbar.update(1)
-                    pbar.set_postfix(
-                        {
-                            "Total Reward": total_reward,
-                            "Agent Step": step_count,
-                            "Average Action Time": np.mean(agent_action_times)
-                            if agent_action_times
-                            else 0,
-                        }
-                    )
 
                     state = next_state
 
@@ -192,10 +181,7 @@ class PPO:
                         break
 
                 if not env.done and step_count >= max_steps:
-                    print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
                     scores_list.append(total_reward)
-
-                pbar.close()
 
                 # Compute GAE and returns
                 values.append(
@@ -209,6 +195,17 @@ class PPO:
 
                 self._update_networks(states, actions, advantages, returns, log_probs)
 
+                pbar.update(1)
+                pbar.set_postfix(
+                    {
+                        "Total Reward": total_reward,
+                        "Agent Step": step_count,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if agent_action_times
+                        else 0,
+                    }
+                )
+
                 if test_intervals is not None and (e + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
                         env,
@@ -221,6 +218,7 @@ class PPO:
                         f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
                     )
 
+            pbar.close()
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -379,6 +377,7 @@ class PPO:
 
             action_times.append(np.mean(episode_action_times))
             episode_times.append(episode_end_time - episode_start_time)
+            scores_list.append(total_reward)
             step_by_episode.append(step_count)
 
         win_rate = win_game / episodes
@@ -399,8 +398,10 @@ class PPO:
             episodes=range(episodes),
             scores=scores_list,
             episode_times=episode_times,
+            action_times=action_times,
             steps_per_game=step_by_episode,
             actions=actions_list,
+            is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
             metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train

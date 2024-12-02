@@ -46,7 +46,14 @@ class ReinforceBaseline:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            for episode in range(episodes):
+            pbar = tqdm(
+                range(episodes),
+                total=episodes,
+                unit="episodes",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, agent Step: 0, Average Action Time: 0",
+            )
+            for episode in pbar:
                 # generate episode
                 start_time = time.time()
                 states, actions, rewards, agent_action_times = self.generate_episode(
@@ -56,17 +63,6 @@ class ReinforceBaseline:
                 episode_times.append(end_time - start_time)
                 action_times.append(np.mean(agent_action_times))
                 steps_per_game.append(len(states))
-
-                # Metrics
-                t = 0
-                pbar = tqdm(
-                    total=len(states),
-                    desc=f"Episode {episode + 1}/ {episodes}",
-                    unit="Step",
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"total reward: 0, agent Step: {t}, Average Action Time: 0",
-                    dynamic_ncols=True,
-                )
 
                 # Calc cumulative reward
                 G = self.calculate_reward(rewards)
@@ -88,20 +84,18 @@ class ReinforceBaseline:
                     episode_policy_loss += policy_loss
                     episode_baseline_loss += baseline_loss
 
-                    pbar.update(1)
-                    pbar.set_postfix(
-                        {
-                            "Total Reward": G_t,
-                            "Agent Step": t,
-                            "Policy loss": policy_loss,
-                            "Baseline loss": baseline_loss,
-                            "Average Action Time": np.mean(agent_action_times)
-                            if len(agent_action_times) > 0
-                            else 0,
-                        }
-                    )
-
-                pbar.close()
+                pbar.update(1)
+                pbar.set_postfix(
+                    {
+                        "Total Reward": G[-1],
+                        "Agent Step": len(states),
+                        "Policy loss": episode_policy_loss,
+                        "Baseline loss": episode_baseline_loss,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                    }
+                )
                 scores_list.append(G[-1])
                 policy_losses_per_episode.append(episode_policy_loss)
                 baseline_losses_per_episode.append(episode_baseline_loss)
@@ -118,6 +112,7 @@ class ReinforceBaseline:
                         f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
                     )
 
+            pbar.close()
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -189,9 +184,10 @@ class ReinforceBaseline:
                         win_games += 1
                         break
 
+                scores_list.append(environment.get_reward())
                 episode_end_time = time.time()
+
                 if not done and step_count >= max_steps:
-                    scores_list.append(environment.get_reward())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
             action_times.append(np.mean(episode_action_times))
@@ -262,9 +258,6 @@ class ReinforceBaseline:
 
             state = next_state
             rewards.append(reward)
-
-        if not environment.done and step_count >= max_step:
-            print(f"reached max steps ({max_step})")
 
         return states, actions, rewards, agent_action_times
 

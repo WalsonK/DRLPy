@@ -43,7 +43,14 @@ class Reinforce:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            for episode in range(episodes):
+            pbar = tqdm(
+                range(episodes),
+                total=episodes,
+                unit="episodes",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, agent Step: 0, Average Action Time: 0",
+            )
+            for episode in pbar:
                 # generate episode
                 start_time = time.time()
                 states, actions, rewards, agent_action_times = self.generate_episode(
@@ -53,17 +60,6 @@ class Reinforce:
                 episode_times.append(end_time - start_time)
                 action_times.append(np.mean(agent_action_times))
                 steps_per_game.append(len(states))
-
-                # metrics
-                t = 0
-                pbar = tqdm(
-                    total=len(states),
-                    desc=f"Episode {episode + 1}/ {episodes}",
-                    unit="Step",
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"total reward: 0, agent Step: {t}, Average Action Time: 0",
-                    dynamic_ncols=True,
-                )
 
                 # Calc cumulative reward
                 G = self.calculate_reward(rewards)
@@ -79,19 +75,19 @@ class Reinforce:
                     loss = self.update_policy(state, action, G_t, t)
                     episode_loss += loss
 
-                    pbar.update(1)
-                    pbar.set_postfix(
-                        {
-                            "Total Reward": G_t,
-                            "Agent Step": t,
-                            "Average Action Time": np.mean(agent_action_times)
-                            if len(agent_action_times) > 0
-                            else 0,
-                        }
-                    )
                 scores_list.append(G[-1])
                 losses_per_episode.append(episode_loss)
-                pbar.close()
+
+                pbar.update(1)
+                pbar.set_postfix(
+                    {
+                        "Total Reward": G[-1],
+                        "Agent Step": len(states),
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                    }
+                )
 
                 if test_intervals is not None and (episode + 1) in test_intervals:
                     win_rate, avg_reward = self.test(
@@ -104,7 +100,7 @@ class Reinforce:
                     file.write(
                         f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
                     )
-
+            pbar.close()
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
@@ -174,9 +170,10 @@ class Reinforce:
                         win_games += 1
                         break
 
+                scores_list.append(environment.get_reward())
                 episode_end_time = time.time()
+
                 if not done and step_count >= max_steps:
-                    scores_list.append(environment.get_reward())
                     print(f"Episode {e + 1}/{episodes} reached max steps ({max_steps})")
 
             action_times.append(np.mean(episode_action_times))
@@ -249,9 +246,6 @@ class Reinforce:
             rewards.append(reward)
             # if done:
             # rewards = np.full(len(states), environment.get_reward())
-
-        if not environment.done and step_count >= max_step:
-            print(f"reached max steps ({max_step})")
 
         return states, actions, rewards, agent_action_times
 

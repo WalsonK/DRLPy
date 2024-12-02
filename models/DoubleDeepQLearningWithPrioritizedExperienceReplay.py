@@ -255,21 +255,19 @@ class DDQLWithPER:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
-            for e in range(episodes):
+            pbar = tqdm(
+                range(episodes),
+                total=episodes,
+                unit="episodes",
+                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
+                postfix=f"total reward: 0, Epsilon: {self.epsilon:.4f}, agent Step: 0, Average Action Time: 0",
+            )
+            for e in pbar:
                 start_time = time.time()
                 state = env.reset()
                 total_reward = 0
                 step_count = 0
                 episode_losses = []
-
-                pbar = tqdm(
-                    total=max_steps,
-                    desc=f"Episode {e + 1}/{episodes}",
-                    unit="Step",
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {postfix}",
-                    postfix=f"total reward: {total_reward}, Epsilon: {self.epsilon:.4f}, agent Step: {step_count}, Average Action Time: 0",
-                    dynamic_ncols=True,
-                )
 
                 if hasattr(env, "roll_dice"):
                     env.roll_dice()
@@ -294,7 +292,6 @@ class DDQLWithPER:
 
                     action_list.append(action)  # Enregistrer l'action choisie
 
-                    pbar.update(1)
 
                     if hasattr(env, "available_actions") and isinstance(
                         env.available_actions(), dict
@@ -349,25 +346,23 @@ class DDQLWithPER:
                     state = next_state
                     total_reward += reward
 
-                    pbar.set_postfix(
-                        {
-                            "Total Reward": total_reward,
-                            "Epsilon": self.epsilon,
-                            "Agent Step": step_count,
-                            "Average Action Time": np.mean(agent_action_times)
-                            if len(agent_action_times) > 0
-                            else 0,
-                            "Loss": np.mean(episode_losses) if episode_losses else 0,
-                        }
-                    )
-
                     if env.done:
                         if total_reward > best_score:
                             best_score = total_reward
                         break
 
-                pbar.close()
-
+                pbar.update(1)
+                pbar.set_postfix(
+                    {
+                        "Total Reward": total_reward,
+                        "Epsilon": self.epsilon,
+                        "Agent Step": step_count,
+                        "Average Action Time": np.mean(agent_action_times)
+                        if len(agent_action_times) > 0
+                        else 0,
+                        "Loss": np.mean(episode_losses) if episode_losses else 0,
+                    }
+                )
                 scores_list.append(total_reward)
                 losses_per_episode.append(
                     np.mean(episode_losses) if episode_losses else 0
@@ -391,6 +386,7 @@ class DDQLWithPER:
                         f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
                     )
 
+            pbar.close()
             file.write("\nTraining Complete\n")
             file.write(
                 f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
