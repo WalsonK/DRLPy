@@ -1,14 +1,15 @@
-import numpy as np
 import os
 import pickle
-import time
 import random
+import time
+
+import numpy as np
 from tqdm import tqdm
 
 from environement.farkle import Farkle
+from environement.lineworld import LineWorld
 from tools import print_metrics
 
-from environement.lineworld import LineWorld
 
 class TabularQLearning:
     def __init__(
@@ -35,9 +36,9 @@ class TabularQLearning:
         # Map state vectors to indices
         self.state_to_index = {}
 
-    def get_state_index2(self,state):
+    def get_state_index2(self, state):
         if str(state) not in self.state_to_index:
-            new_index = int("".join(map(str, state)),2)
+            new_index = int("".join(map(str, state)), 2)
             self.state_to_index[str(state)] = new_index
             return self.state_to_index[str(state)]
 
@@ -52,7 +53,9 @@ class TabularQLearning:
             self.state_to_index[state_tuple] = new_index
 
             if new_index >= self.q_table.shape[0]:
-                self.q_table = np.vstack([self.q_table, np.zeros((1, self.action_size))])
+                self.q_table = np.vstack(
+                    [self.q_table, np.zeros((1, self.action_size))]
+                )
 
         return self.state_to_index[state_tuple]
 
@@ -78,15 +81,26 @@ class TabularQLearning:
         target = reward + self.gamma * max_next_q_value
 
         # Update Q-value using the Q-learning formula
-        self.q_table[state_index, action] += self.learning_rate * (target - current_q_value)
+        self.q_table[state_index, action] += self.learning_rate * (
+            target - current_q_value
+        )
 
-    def train(self, env, episodes=200, max_steps=500, test_intervals=[1000, 10_000, 100_000, 1000000]):
+    def train(
+        self,
+        env,
+        episodes=200,
+        max_steps=500,
+        test_intervals=[1000, 10_000, 100_000, 1000000],
+    ):
         scores_list = []
         episode_times = []
         actions_list = []
         agent_action_times = []
 
-        with open(f"report/TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt", "a") as file:
+        with open(
+            f"report/TabularQLearning_{env.__class__.__name__}_{episodes}episodes.txt",
+            "a",
+        ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
 
@@ -161,27 +175,38 @@ class TabularQLearning:
                         episodes=10,
                         max_steps=max_steps,
                         model_name=env.__class__.__name__ + "_" + str(e + 1),
-                        is_saving_after_train=True
+                        is_saving_after_train=True,
                     )
-                    file.write(f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n")
+                    file.write(
+                        f"Test after {e + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
+                    )
 
             pbar.close()
             file.write("\nTraining Complete\n")
-            file.write(f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n")
+            file.write(
+                f"Final Mean Score after {episodes} episodes: {np.mean(scores_list)}\n"
+            )
             file.write(f"Total training time: {np.sum(episode_times)} seconds\n")
 
             print_metrics(
                 episodes=range(episodes),
                 scores=scores_list,
-                episode_times=episode_times ,
+                episode_times=episode_times,
                 actions=actions_list,
                 algo_name=self.__class__.__name__,
-                env_name=env.__class__.__name__
-        )
+                env_name=env.__class__.__name__,
+            )
 
         return np.mean(scores_list)
 
-    def test(self, env, episodes=10, max_steps=10, model_name=None, is_saving_after_train=False):
+    def test(
+        self,
+        env,
+        episodes=10,
+        max_steps=10,
+        model_name=None,
+        is_saving_after_train=False,
+    ):
         scores_list = []
         episode_times = []
         action_times = []
@@ -256,14 +281,19 @@ class TabularQLearning:
             is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
-            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
-            else ""
+            metric_for=str(model_name.split("_")[-1].split(".")[0])
+            + " episodes trained"
+            if is_saving_after_train
+            else "",
         )
         win_rate = win_game / episodes
 
         if is_saving_after_train:
-
-            model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            model_name = (
+                env.__class__.__name__ + "_" + str(episodes)
+                if model_name is None
+                else model_name
+            )
             self.save_model(model_name)
         return win_rate, avg_reward
 
@@ -271,15 +301,15 @@ class TabularQLearning:
         os.makedirs("agents", exist_ok=True)
         with open(f"agents/{self.__class__.__name__}_{game_name}.pkl", "wb") as f:
             params = {
-                "state_size" : self.state_size,
-                "action_size" : self.action_size,
-                "learning_rate" : self.learning_rate,
-                "gamma" : self.gamma,
-                "epsilon" : self.epsilon,
-                "epsilon_min" : self.epsilon_min,
-                "epsilon_decay" : self.epsilon_decay,
-                "q_table" : self.q_table,
-                "state_to_index" : self.state_to_index,
+                "state_size": self.state_size,
+                "action_size": self.action_size,
+                "learning_rate": self.learning_rate,
+                "gamma": self.gamma,
+                "epsilon": self.epsilon,
+                "epsilon_min": self.epsilon_min,
+                "epsilon_decay": self.epsilon_decay,
+                "q_table": self.q_table,
+                "state_to_index": self.state_to_index,
             }
             pickle.dump(params, f)
         print(f"Q-table saved as '{self.__class__.__name__}_{game_name}'.")
@@ -304,13 +334,13 @@ class TabularQLearning:
             print(f"No saved model found with the name '{game_name}'.")
 
 
-#enve = LineWorld(5)
+# enve = LineWorld(5)
 
-#model = TabularQLearning(5, 2)
+# model = TabularQLearning(5, 2)
 
-#model.train(env=enve, episodes=1500, max_steps=300)
-#model.test(env=enve, episodes=100, max_steps=200)
-#name = "farkle_test_save_load"
+# model.train(env=enve, episodes=1500, max_steps=300)
+# model.test(env=enve, episodes=100, max_steps=200)
+# name = "farkle_test_save_load"
 # _model.save_model(name)
 # model_test = Reinforce(4, 4, learning_rate=10)
 # model_test.load_model(name)

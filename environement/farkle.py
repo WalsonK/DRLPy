@@ -23,7 +23,7 @@ def powerset(iterable):
 
 
 class Farkle:
-    def __init__(self, winning_score=10000, printing=True):
+    def __init__(self, winning_score=1000, printing=True):
         self.printify = printing
         self.winning_score = winning_score
         self.scores = [0, 0]  # Scores des deux joueurs

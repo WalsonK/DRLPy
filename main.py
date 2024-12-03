@@ -1,13 +1,14 @@
+import os
 import random
 import re
-import os
+
 from tqdm import tqdm
 
+import models
 from environement.farkle import Farkle
 from environement.gridworld import GridWorld
 from environement.lineworld import LineWorld
 from environement.tictactoe import TicTacToe
-import models
 
 
 # Game selection logic
@@ -44,23 +45,20 @@ def select_game():
 def select_agent(s_size, a_size):
     """Set the agent from the user input"""
 
-    agent_name = (
-        int(
-            input(
-                "Enter the index of the agent:\n"
-                "1 - Deep QLearning\n"
-                "2 - Double Deep QLearning\n"
-                "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
-                "4 - DQN With Replay\n"
-                "5 - Reinforce\n"
-                "6 - Reinforce with baseline\n"
-                "7 - Reinforce with actor critic\n"
-                "8 - PPO\n"
-                "9 - RandomRollout\n"
-                "10 - TabularQLearning\n"
-                "> "
-            )
-
+    agent_name = int(
+        input(
+            "Enter the index of the agent:\n"
+            "1 - Deep QLearning\n"
+            "2 - Double Deep QLearning\n"
+            "3 - Double Deep QLearning WithPrioritized Experience Replay\n"
+            "4 - DQN With Replay\n"
+            "5 - Reinforce\n"
+            "6 - Reinforce with baseline\n"
+            "7 - Reinforce with actor critic\n"
+            "8 - PPO\n"
+            "9 - RandomRollout\n"
+            "10 - TabularQLearning\n"
+            "> "
         )
     )
     if agent_name == 1:
@@ -78,12 +76,12 @@ def select_agent(s_size, a_size):
     elif agent_name == 7:
         model = models.ReinforceActorCritic(s_size, a_size)
     elif agent_name == 8:
-         model = models.PPO(s_size, a_size)
+        model = models.PPO(s_size, a_size)
     elif agent_name == 9:
         model = models.RandomRollout(s_size, a_size)
     elif agent_name == 10:
         model = models.TabularQLearning(s_size, a_size)
-        
+
     else:
         model = models.DQL(s_size, a_size)
     return model
@@ -91,7 +89,9 @@ def select_agent(s_size, a_size):
 
 def get_unique_version(model_name, environment_name):
     folder_path = "agents/"
-    file_pattern = re.compile(rf"^{re.escape(model_name)}_{re.escape(environment_name)}_(\d+)*")
+    file_pattern = re.compile(
+        rf"^{re.escape(model_name)}_{re.escape(environment_name)}_(\d+)*"
+    )
 
     iterations = []
 
@@ -128,7 +128,11 @@ def simulate_game(game, model=None, manual=False):
                         print("Your turn (Player).")
                         available_actions = game.available_actions()
                         action = manual_player(available_actions)
-                    elif any(isinstance(model, cls) for cls in vars(models).values() if isinstance(cls, type)):
+                    elif any(
+                        isinstance(model, cls)
+                        for cls in vars(models).values()
+                        if isinstance(cls, type)
+                    ):
                         # elif isinstance(model, DQN_with_replay.DQN_with_replay):
                         # **Model's Turn** (Model vs Random)
                         print("Agent model's turn.")
@@ -184,7 +188,9 @@ def manual_player(available_actions):
 def train_agent(model, env, name, max_steps, episodes, intervals=None):
     """Train the agent"""
     print(f"Starting training with {model.__class__.__name__}")
-    r = model.train(env, episodes=episodes, max_steps=max_steps, test_intervals=intervals)
+    r = model.train(
+        env, episodes=episodes, max_steps=max_steps, test_intervals=intervals
+    )
     print(f"Trained Mean score: {r}")
     model.test(env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False)
 
@@ -213,7 +219,9 @@ def test_agent(model, env, name, max_steps, episodes):
         it = int(input("> "))
         name = env.__class__.__name__ + "_" + str(it)
         agent.load_model(name)
-        agent.test(env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False)
+        agent.test(
+            env, episodes=episodes, max_steps=max_steps, is_saving_after_train=False
+        )
         if (
             input(
                 f"Do you want to play against the {model.__class__.__name__}? (y/n): \n> "
@@ -250,9 +258,11 @@ if __name__ == "__main__":
 
         iteration = None
         if episode == 0:
-            user_input = input("Enter iterations as comma-separated values (e.g., 5, 10, 15, 20): ")
+            user_input = input(
+                "Enter iterations as comma-separated values (e.g., 5, 10, 15, 20): "
+            )
             iteration = [int(x.strip()) for x in user_input.split(",")]
-            episode = iteration[-1]+1
+            episode = iteration[-1] + 1
         agent = select_agent(state_size, action_size)
         train_agent(agent, game, game_name, max_step, episode, iteration)
 

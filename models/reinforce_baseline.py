@@ -1,14 +1,16 @@
+import os
+import pickle
+import random
+import time
+
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
-from environement.farkle import Farkle
-import random
-import time
-import numpy as np
 from tqdm import tqdm, trange
+
+from environement.farkle import Farkle
 from tools import print_metrics
-import os
-import pickle
 
 
 class ReinforceBaseline:
@@ -29,7 +31,13 @@ class ReinforceBaseline:
         )
         return model
 
-    def train(self, environment, episodes, max_steps, test_intervals=[1000, 10_000, 100_000, 1_000_000]):
+    def train(
+        self,
+        environment,
+        episodes,
+        max_steps,
+        test_intervals=[1000, 10_000, 100_000, 1_000_000],
+    ):
         scores_list = []
         episode_times = []
         action_times = []
@@ -105,8 +113,10 @@ class ReinforceBaseline:
                         environment,
                         10,
                         max_steps,
-                        model_name=environment.__class__.__name__ + "_" + str(episode + 1),
-                        is_saving_after_train=True
+                        model_name=environment.__class__.__name__
+                        + "_"
+                        + str(episode + 1),
+                        is_saving_after_train=True,
                     )
                     file.write(
                         f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
@@ -136,7 +146,14 @@ class ReinforceBaseline:
         )
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps, model_name=None, is_saving_after_train=False):
+    def test(
+        self,
+        environment,
+        episodes,
+        max_steps,
+        model_name=None,
+        is_saving_after_train=False,
+    ):
         scores_list = []
         episode_times = []
         action_times = []
@@ -206,12 +223,18 @@ class ReinforceBaseline:
             is_training=False,
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__,
-            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
-            else ""
+            metric_for=str(model_name.split("_")[-1].split(".")[0])
+            + " episodes trained"
+            if is_saving_after_train
+            else "",
         )
 
         if is_saving_after_train:
-            model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            model_name = (
+                environment.__class__.__name__ + "_" + str(episodes)
+                if model_name is None
+                else model_name
+            )
             self.save_model(model_name)
 
         return win_rate, np.mean(scores_list)

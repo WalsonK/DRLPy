@@ -3,12 +3,12 @@ from .DeepQLearning import DQL
 from .DoubleDeepQLearning import DDQL
 from .DoubleDeepQLearningWithPrioritizedExperienceReplay import DDQLWithPER
 from .DQN_with_replay import DQN_with_replay
-from .reinforce import Reinforce
-from .reinforce_baseline import ReinforceBaseline
-from .reinforce_actor_critic import ReinforceActorCritic
 from .PPO import PPO
-from .TabularQLearning import TabularQLearning
 from .RandomRollout import RandomRollout
+from .reinforce import Reinforce
+from .reinforce_actor_critic import ReinforceActorCritic
+from .reinforce_baseline import ReinforceBaseline
+from .TabularQLearning import TabularQLearning
 
 __all__ = [
     "DQL",
@@ -19,6 +19,5 @@ __all__ = [
     "ReinforceBaseline",
     "ReinforceActorCritic",
     "PPO",
-    "TabularQLearning"
-    "RandomRollout",
+    "TabularQLearning" "RandomRollout",
 ]

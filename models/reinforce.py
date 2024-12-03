@@ -1,14 +1,16 @@
-from environement.farkle import Farkle
-import numpy as np
+import os
+import pickle
 import random
+import time
+
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tqdm import tqdm, trange
-import time
+
+from environement.farkle import Farkle
 from tools import print_metrics
-import os
-import pickle
 
 
 class Reinforce:
@@ -28,7 +30,13 @@ class Reinforce:
         )
         return model
 
-    def train(self, environment, episodes, max_steps, test_intervals=[1000, 10_000, 100_000, 1_000_000]):
+    def train(
+        self,
+        environment,
+        episodes,
+        max_steps,
+        test_intervals=[1000, 10_000, 100_000, 1_000_000],
+    ):
         scores_list = []
         episode_times = []
         action_times = []
@@ -37,8 +45,8 @@ class Reinforce:
         losses_per_episode = []
 
         with open(
-                f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
-                "a",
+            f"report/training_results_{self.__class__.__name__}_{environment.__class__.__name__}_{episodes}episodes.txt",
+            "a",
         ) as file:
             file.write("Training Started\n")
             file.write(f"Training with {episodes} episodes and max steps {max_steps}\n")
@@ -94,8 +102,10 @@ class Reinforce:
                         environment,
                         10,
                         max_steps,
-                        model_name=environment.__class__.__name__ + "_" + str(episode + 1),
-                        is_saving_after_train=True
+                        model_name=environment.__class__.__name__
+                        + "_"
+                        + str(episode + 1),
+                        is_saving_after_train=True,
                     )
                     file.write(
                         f"Test after {episode + 1} episodes: Average score: {avg_reward}, Win rate: {win_rate}\n"
@@ -122,7 +132,14 @@ class Reinforce:
 
         return np.mean(scores_list)
 
-    def test(self, environment, episodes, max_steps, model_name=None, is_saving_after_train=False):
+    def test(
+        self,
+        environment,
+        episodes,
+        max_steps,
+        model_name=None,
+        is_saving_after_train=False,
+    ):
         scores_list = []
         episode_times = []
         action_times = []
@@ -151,8 +168,8 @@ class Reinforce:
                     available_actions = environment.available_actions()
 
                     if (
-                            hasattr(environment, "current_player")
-                            and environment.current_player == 1
+                        hasattr(environment, "current_player")
+                        and environment.current_player == 1
                     ):
                         action_start_time = time.time()
                         action = self.choose_action(state, available_actions)
@@ -192,12 +209,18 @@ class Reinforce:
             is_training=False,
             algo_name=self.__class__.__name__,
             env_name=environment.__class__.__name__,
-            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
-            else ""
+            metric_for=str(model_name.split("_")[-1].split(".")[0])
+            + " episodes trained"
+            if is_saving_after_train
+            else "",
         )
 
         if is_saving_after_train:
-            model_name = environment.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            model_name = (
+                environment.__class__.__name__ + "_" + str(episodes)
+                if model_name is None
+                else model_name
+            )
             self.save_model(model_name)
 
         return win_rate, np.mean(scores_list)
@@ -218,8 +241,8 @@ class Reinforce:
             )
 
             if (
-                    hasattr(environment, "current_player")
-                    and environment.current_player == 1
+                hasattr(environment, "current_player")
+                and environment.current_player == 1
             ):
                 start_time = time.time()
                 action = self.choose_action(state, keys)
@@ -235,8 +258,8 @@ class Reinforce:
             )
 
             if (
-                    hasattr(environment, "current_player")
-                    and environment.current_player == 1
+                hasattr(environment, "current_player")
+                and environment.current_player == 1
             ):
                 states.append(state)
                 actions.append(action)
@@ -274,7 +297,7 @@ class Reinforce:
 
         # Mise à jour manuelle de chaque variable de theta en appliquant le taux d'apprentissage
         for i, var in enumerate(self.theta.trainable_variables):
-            var.assign_add(self.learning_rate * (self.gamma ** t) * G_t * grads[i])
+            var.assign_add(self.learning_rate * (self.gamma**t) * G_t * grads[i])
 
         return loss.numpy()
 
@@ -288,7 +311,7 @@ class Reinforce:
         params = {"learning_rate": self.learning_rate, "gamma": self.gamma}
 
         with open(
-                f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
+            f"agents/{self.__class__.__name__}_{game_name}_params.pkl", "wb"
         ) as f:
             pickle.dump(params, f)
 
@@ -307,6 +330,7 @@ class Reinforce:
 
             self.learning_rate = params["learning_rate"]
             self.gamma = params["gamma"]
+
 
 # _env = Farkle(printing=False)
 # _model = Reinforce(_env.state_size, _env.actions_size, learning_rate=0.1)

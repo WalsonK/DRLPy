@@ -1,7 +1,8 @@
 import random
-import numpy as np
-import matplotlib.pyplot as plt
 from collections import Counter
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def random_player(env):
@@ -21,7 +22,7 @@ def print_metrics(
     is_training: bool = True,
     algo_name="",
     env_name="",
-    metric_for=""
+    metric_for="",
 ):
     # scores metrics
     if scores:
@@ -30,7 +31,7 @@ def print_metrics(
             f"Evolution of scores per episode in Training of {env_name} \nfor {algo_name} in {episodes.stop} episodes"
             if is_training
             else f"Evolution of scores per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
-                 f"for {metric_for}"
+            f"for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Score")
@@ -44,7 +45,7 @@ def print_metrics(
             f"Evolution of episode time in Training of {env_name} \nfor {algo_name} in {episodes.stop} episodes"
             if is_training
             else f"Evolution of episode time in Test of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
-                 f"for {metric_for}"
+            f"for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Time (s)")
@@ -59,7 +60,7 @@ def print_metrics(
             f"episodes"
             if is_training
             else f"Evolution of action mean time per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} "
-                 f"episodes for {metric_for}"
+            f"episodes for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Average action time (s)")
@@ -76,7 +77,7 @@ def print_metrics(
             f"episodes"
             if is_training
             else f"Distribution of action take by the agent in Test of {env_name} \nfor {algo_name} in {episodes.stop} "
-                 f"episodes for {metric_for}"
+            f"episodes for {metric_for}"
         )
         plt.xlabel("Counts")
         plt.ylabel("Action")
@@ -94,7 +95,7 @@ def print_metrics(
             f"episodes"
             if is_training
             else f"Evolution of agent step per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} "
-                 f"episodes for {metric_for}"
+            f"episodes for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Nombre de step")
@@ -114,7 +115,7 @@ def print_metrics(
             f"Losses evolution per episode in Training of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
             if is_training
             else f"Losses evolution per episode in Test of {env_name} \nfor {algo_name} in {episodes.stop} episodes "
-                 f"for {metric_for}"
+            f"for {metric_for}"
         )
         plt.xlabel("Episodes")
         plt.ylabel("Losses")

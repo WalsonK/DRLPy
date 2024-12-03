@@ -292,7 +292,6 @@ class DDQLWithPER:
 
                     action_list.append(action)  # Enregistrer l'action choisie
 
-
                     if hasattr(env, "available_actions") and isinstance(
                         env.available_actions(), dict
                     ):
@@ -379,7 +378,7 @@ class DDQLWithPER:
                         episodes=10,
                         max_steps=max_steps,
                         model_name=env.__class__.__name__ + "_" + str(e + 1),
-                        is_saving_after_train=True
+                        is_saving_after_train=True,
                     )
 
                     file.write(
@@ -412,7 +411,7 @@ class DDQLWithPER:
         episodes=200,
         max_steps=10,
         model_name=None,
-        is_saving_after_train=False
+        is_saving_after_train=False,
     ):
         scores_list = []
         episode_times = []
@@ -487,12 +486,18 @@ class DDQLWithPER:
             is_training=False,
             algo_name=self.__class__.__name__,
             env_name=env.__class__.__name__,
-            metric_for=str(model_name.split("_")[-1].split(".")[0]) + " episodes trained" if is_saving_after_train
-            else ""
+            metric_for=str(model_name.split("_")[-1].split(".")[0])
+            + " episodes trained"
+            if is_saving_after_train
+            else "",
         )
 
         if is_saving_after_train:
-            model_name = env.__class__.__name__ + "_" + str(episodes) if model_name is None else model_name
+            model_name = (
+                env.__class__.__name__ + "_" + str(episodes)
+                if model_name is None
+                else model_name
+            )
             self.save_model(model_name)
 
         return win_rate, avg_reward
